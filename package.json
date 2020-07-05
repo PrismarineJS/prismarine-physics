@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "jest --verbose",
-    "pretest": "npm run lint",
+    "pretest": "npm run lint && require-self",
     "lint": "standard",
     "fix": "standard --fix"
   },
@@ -29,6 +29,9 @@
   "homepage": "https://github.com/PrismarineJS/prismarine-physics#readme",
   "devDependencies": {
     "jest": "^26.1.0",
+    "require-self": "^0.2.3",
+    "minecraft-data": "^2.61.0",
+    "prismarine-block": "^1.6.0",
     "standard": "^14.3.4"
   },
   "dependencies": {
