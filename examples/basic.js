@@ -1,5 +1,3 @@
-/* eslint-env jest */
-
 const { Physics, PlayerState } = require('prismarine-physics')
 const { Vec3 } = require('vec3')
 
@@ -33,25 +31,21 @@ function fakePlayer (pos) {
   }
 }
 
-describe('Basic tests', () => {
-  test('Gravity test', () => {
-    const physics = Physics(mcData, fakeWorld)
-    const controls = {
-      forward: false,
-      back: false,
-      left: false,
-      right: false,
-      jump: false,
-      sprint: false,
-      sneak: false
-    }
-    const player = fakePlayer(new Vec3(0, 80, 0))
-    const playerState = new PlayerState(player, controls)
+const physics = Physics(mcData, fakeWorld)
+const controls = {
+  forward: false,
+  back: false,
+  left: false,
+  right: false,
+  jump: false,
+  sprint: false,
+  sneak: false
+}
+const player = fakePlayer(new Vec3(0, 80, 0))
+const playerState = new PlayerState(player, controls)
 
-    while (!player.entity.onGround) {
-      physics.simulatePlayer(playerState, fakeWorld).apply(player)
-    }
+while (!player.entity.onGround) {
+  physics.simulatePlayer(playerState, fakeWorld).apply(player)
+}
 
-    expect(player.entity.position).toEqual(new Vec3(0, 60, 0))
-  })
-})
+console.log(player.entity.position)

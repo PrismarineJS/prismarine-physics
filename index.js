@@ -1,6 +1,6 @@
 const Vec3 = require('vec3').Vec3
-const AABB = require('./aabb')
-const math = require('./math')
+const AABB = require('./lib/aabb')
+const math = require('./lib/math')
 
 function Physics (mcData, world) {
   const blocksByName = mcData.blocksByName
