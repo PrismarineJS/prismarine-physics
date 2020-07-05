@@ -9,7 +9,7 @@
   "scripts": {
     "test": "jest --verbose",
     "pretest": "npm run lint && require-self",
-    "prepare": "require-self",
+    "prepare": "npm install require-self && require-self",
     "lint": "standard",
     "fix": "standard --fix"
   },
