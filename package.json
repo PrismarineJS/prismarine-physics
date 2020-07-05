@@ -1,0 +1,37 @@
+{
+  "name": "prismarine-physics",
+  "version": "1.0.0",
+  "description": "Provide the physics engine for minecraft entities",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "jest --verbose",
+    "pretest": "npm run lint",
+    "lint": "standard",
+    "fix": "standard --fix"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PrismarineJS/prismarine-physics.git"
+  },
+  "keywords": [
+    "physics",
+    "prismarine",
+    "minecraft"
+  ],
+  "author": "Romain Beaumont",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/PrismarineJS/prismarine-physics/issues"
+  },
+  "homepage": "https://github.com/PrismarineJS/prismarine-physics#readme",
+  "devDependencies": {
+    "jest": "^26.1.0",
+    "standard": "^14.3.4"
+  },
+  "dependencies": {
+    "vec3": "^0.1.5"
+  }
+}
