@@ -64,7 +64,7 @@ function Physics (mcData, world) {
   function getSurroundingBBs (world, queryBB) {
     const surroundingBBs = []
     const cursor = new Vec3(0, 0, 0)
-    for (cursor.y = Math.floor(queryBB.minY); cursor.y <= Math.floor(queryBB.maxY); cursor.y++) {
+    for (cursor.y = Math.floor(queryBB.minY) - 1; cursor.y <= Math.floor(queryBB.maxY); cursor.y++) {
       for (cursor.z = Math.floor(queryBB.minZ); cursor.z <= Math.floor(queryBB.maxZ); cursor.z++) {
         for (cursor.x = Math.floor(queryBB.minX); cursor.x <= Math.floor(queryBB.maxX); cursor.x++) {
           const block = world.getBlock(cursor)
