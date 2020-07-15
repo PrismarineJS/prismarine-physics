@@ -347,7 +347,7 @@ function Physics (mcData, world) {
       const adjBlock = world.getBlock(block.position.offset(dx, 0, dz))
       const adjLevel = getRenderedDepth(adjBlock)
       if (adjLevel < 0) {
-        if (adjBlock.boundingBox !== 'empty') {
+        if (adjBlock && adjBlock.boundingBox !== 'empty') {
           const adjLevel = getRenderedDepth(world.getBlock(block.position.offset(dx, -1, dz)))
           if (adjLevel >= 0) {
             const f = adjLevel - (curlevel - 8)
@@ -366,7 +366,7 @@ function Physics (mcData, world) {
       for (const [dx, dz] of [[0, 1], [-1, 0], [0, -1], [1, 0]]) {
         const adjBlock = world.getBlock(block.position.offset(dx, 0, dz))
         const adjUpBlock = world.getBlock(block.position.offset(dx, 1, dz))
-        if (adjBlock.boundingBox !== 'empty' || adjUpBlock.boundingBox !== 'empty') {
+        if ((adjBlock && adjBlock.boundingBox !== 'empty') || (adjUpBlock && adjUpBlock.boundingBox !== 'empty')) {
           flow.normalize().translate(0, -6, 0)
         }
       }
