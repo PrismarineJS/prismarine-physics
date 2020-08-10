@@ -28,17 +28,16 @@ function Physics (mcData, world) {
   const lavaId = blocksByName.lava.id
   const ladderId = blocksByName.ladder.id
   const vineId = blocksByName.vine.id
-  const waterLike = []
-  if (blocksByName.seagrass) waterLike.push(blocksByName.seagrass.id) // 1.13+
-  if (blocksByName.tall_seagrass) waterLike.push(blocksByName.tall_seagrass.id) // 1.13+
-  if (blocksByName.kelp) waterLike.push(blocksByName.kelp.id) // 1.13+
+  const waterLike = new Set()
+  if (blocksByName.seagrass) waterLike.add(blocksByName.seagrass.id) // 1.13+
+  if (blocksByName.tall_seagrass) waterLike.add(blocksByName.tall_seagrass.id) // 1.13+
+  if (blocksByName.kelp) waterLike.add(blocksByName.kelp.id) // 1.13+
   const bubblecolumnId = blocksByName.bubble_column ? blocksByName.bubble_column.id : -1 // 1.13+
-  waterLike.push(bubblecolumnId)
+  if (blocksByName.bubble_column) waterLike.add(bubblecolumnId)
 
   const physics = {
     gravity: 0.08, // blocks/tick^2 https://minecraft.gamepedia.com/Entity#Motion_of_entities
     airdrag: (1 - 0.02), // actually (1 - drag)
-    waterGravity: 0.02,
     yawSpeed: 3.0,
     sprintSpeed: 1.3,
     sneakSpeed: 0.3,
@@ -69,6 +68,12 @@ function Physics (mcData, world) {
       up: 0.06,
       maxUp: 0.7
     }
+  }
+
+  if (supportFeature('independentWaterGravity')) {
+    physics.waterGravity = 0.02
+  } else if (supportFeature('proportionalWaterGravity')) {
+    physics.waterGravity = physics.gravity / 16
   }
 
   function getPlayerBB (pos) {
@@ -337,11 +342,7 @@ function Physics (mcData, world) {
       applyHeading(entity, strafe, forward, acceleration)
       moveEntity(entity, world, vel.x, vel.y, vel.z)
       vel.y *= inertia
-      if (supportFeature('independentWaterGravity')) {
-        vel.y -= physics.waterGravity
-      } else if (supportFeature('proportionalWaterGravity')) {
-        vel.y -= physics.gravity / 16
-      }
+      vel.y -= physics.waterGravity
       vel.x *= inertia
       vel.z *= inertia
 
@@ -370,7 +371,7 @@ function Physics (mcData, world) {
 
   function getRenderedDepth (block) {
     if (!block) return -1
-    if (waterLike.includes(block.type)) return 0
+    if (waterLike.has(block.type)) return 0
     if (block.getProperties().waterlogged) return 0
     if (block.type !== waterId) return -1
     const meta = block.metadata
