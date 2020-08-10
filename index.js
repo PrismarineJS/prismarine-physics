@@ -26,8 +26,12 @@ function Physics (mcData, world) {
   const lavaId = blocksByName.lava.id
   const ladderId = blocksByName.ladder.id
   const vineId = blocksByName.vine.id
+  const waterLike = []
+  if (blocksByName.seagrass) waterLike.push(blocksByName.seagrass.id) // 1.13+
+  if (blocksByName.tall_seagrass) waterLike.push(blocksByName.tall_seagrass.id) // 1.13+
+  if (blocksByName.kelp) waterLike.push(blocksByName.kelp.id) // 1.13+
   const bubblecolumnId = blocksByName.bubble_column ? blocksByName.bubble_column.id : -1 // 1.13+
-  const airId = blocksByName.air.id
+  waterLike.push(bubblecolumnId)
 
   const physics = {
     gravity: 0.08, // blocks/tick^2 https://minecraft.gamepedia.com/Entity#Motion_of_entities
@@ -250,20 +254,13 @@ function Physics (mcData, world) {
             } else if (block.type === webId) {
               entity.isInWeb = true
             } else if (block.type === bubblecolumnId) {
-              const drag = block.getProperties().drag
+              const down = !block.metadata
               const aboveBlock = world.getBlock(cursor.offset(0, 1, 0))
-              if (aboveBlock && aboveBlock.type === airId) {
-                if (drag) {
-                  vel.y = Math.max(physics.bubbleColumnSurfaceDrag.maxDown, vel.y - physics.bubbleColumnSurfaceDrag.down)
-                } else {
-                  Math.min(physics.bubbleColumnSurfaceDrag.maxUp, vel.y + physics.bubbleColumnSurfaceDrag.up)
-                }
+              const bubbleDrag = (aboveBlock && aboveBlock.type === 0 /* air */) ? physics.bubbleColumnSurfaceDrag : physics.bubbleColumnDrag
+              if (down) {
+                vel.y = Math.max(bubbleDrag.maxDown, vel.y - bubbleDrag.down)
               } else {
-                if (drag) {
-                  vel.y = Math.max(physics.bubbleColumnDrag.maxDown, vel.y - physics.bubbleColumnDrag.down)
-                } else {
-                  vel.y = Math.min(physics.bubbleColumnDrag.maxUp, vel.y + physics.bubbleColumnDrag.up)
-                }
+                vel.y = Math.min(bubbleDrag.maxUp, vel.y + bubbleDrag.up)
               }
             }
           }
@@ -366,7 +363,7 @@ function Physics (mcData, world) {
 
   function getRenderedDepth (block) {
     if (!block) return -1
-    if (block.type === bubblecolumnId) return 0
+    if (waterLike.includes(block.type)) return 0
     if (block.getProperties().waterlogged) return 0
     if (block.type !== waterId) return -1
     const meta = block.metadata
@@ -416,7 +413,7 @@ function Physics (mcData, world) {
       for (cursor.z = Math.floor(bb.minZ); cursor.z <= Math.floor(bb.maxZ); cursor.z++) {
         for (cursor.x = Math.floor(bb.minX); cursor.x <= Math.floor(bb.maxX); cursor.x++) {
           const block = world.getBlock(cursor)
-          if (block && (block.type === waterId || block.type === bubblecolumnId || block.getProperties().waterlogged)) {
+          if (block && (block.type === waterId || waterLike.includes(block.type) || block.getProperties().waterlogged)) {
             const waterLevel = cursor.y + 1 - getLiquidHeightPcent(block)
             if (Math.ceil(bb.maxY) >= waterLevel) {
               isInWater = true
