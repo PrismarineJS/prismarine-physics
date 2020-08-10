@@ -1,0 +1,12 @@
+[
+  {
+    "name": "independentWaterGravity",
+    "description": "Water gravity is a constant",
+    "versions": ["1.8", "1.9", "1.10", "1.11", "1.12"]
+  },
+  {
+    "name": "proportionalWaterGravity",
+    "description": "Water gravity is a proportion of normal gravity",
+    "versions": ["1.13", "1.14", "1.15", "1.16"]
+  }
+]

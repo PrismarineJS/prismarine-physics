@@ -1,8 +1,10 @@
 const Vec3 = require('vec3').Vec3
 const AABB = require('./lib/aabb')
 const math = require('./lib/math')
+const features = require('./lib/features')
 
 function Physics (mcData, world) {
+  const supportFeature = feature => features.some(({ name, versions }) => name === feature && versions.includes(mcData.version.majorVersion))
   const blocksByName = mcData.blocksByName
 
   // Block Slipperiness
@@ -36,6 +38,7 @@ function Physics (mcData, world) {
   const physics = {
     gravity: 0.08, // blocks/tick^2 https://minecraft.gamepedia.com/Entity#Motion_of_entities
     airdrag: (1 - 0.02), // actually (1 - drag)
+    waterGravity: 0.02,
     yawSpeed: 3.0,
     sprintSpeed: 1.3,
     sneakSpeed: 0.3,
@@ -334,7 +337,11 @@ function Physics (mcData, world) {
       applyHeading(entity, strafe, forward, acceleration)
       moveEntity(entity, world, vel.x, vel.y, vel.z)
       vel.y *= inertia
-      vel.y -= 0.02
+      if (supportFeature('independentWaterGravity')) {
+        vel.y -= physics.waterGravity
+      } else if (supportFeature('proportionalWaterGravity')) {
+        vel.y -= physics.gravity / 16
+      }
       vel.x *= inertia
       vel.z *= inertia
 
