@@ -26,6 +26,8 @@ function Physics (mcData, world) {
   const lavaId = blocksByName.lava.id
   const ladderId = blocksByName.ladder.id
   const vineId = blocksByName.vine.id
+  const airId = blocksByName.air.id
+  const bubblecolumnId = blocksByName.bubble_column.id
 
   const physics = {
     gravity: 0.08, // blocks/tick^2 https://minecraft.gamepedia.com/Entity#Motion_of_entities
@@ -47,7 +49,19 @@ function Physics (mcData, world) {
     airborneAcceleration: 0.02,
     defaultSlipperiness: 0.6,
     outOfLiquidImpulse: 0.3,
-    autojumpCooldown: 10 // ticks (0.5s)
+    autojumpCooldown: 10, // ticks (0.5s)
+    bubbleColumnSurfaceDrag: {
+      down: -0.03,
+      maxDown: -0.9,
+      up: 0.1,
+      maxUp: 1.8
+    },
+    bubbleColumnDrag: {
+      down: -0.03,
+      maxDown: -0.3,
+      up: 0.06,
+      maxUp: 0.7
+    }
   }
 
   function getPlayerBB (pos) {
@@ -235,6 +249,22 @@ function Physics (mcData, world) {
               vel.z *= physics.soulsandSpeed
             } else if (block.type === webId) {
               entity.isInWeb = true
+            } else if (block.type === bubblecolumnId) {
+              const drag = block.getProperties().drag
+              const aboveBlock = world.getBlock(cursor.offset(0, 1, 0))
+              if (aboveBlock && aboveBlock.type === airId) {
+                if (drag) {
+                  vel.y = Math.max(physics.bubbleColumnSurfaceDrag.maxDown, vel.y - physics.bubbleColumnSurfaceDrag.down)
+                } else {
+                  Math.min(physics.bubbleColumnSurfaceDrag.maxUp, vel.y - physics.bubbleColumnSurfaceDrag.up)
+                }
+              } else {
+                if (drag) {
+                  vel.y = Math.max(physics.bubbleColumnDrag.maxDown, vel.y - physics.bubbleColumnDrag.down)
+                } else {
+                  vel.y = Math.min(physics.bubbleColumnDrag.maxUp, vel.y - physics.bubbleColumnDrag.up)
+                }
+              }
             }
           }
         }
