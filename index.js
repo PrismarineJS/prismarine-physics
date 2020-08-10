@@ -160,8 +160,8 @@ function Physics (mcData, world) {
 
     // Step on block if height < stepHeight
     if (physics.stepHeight > 0 &&
-        (entity.onGround || (dy !== oldVelY && oldVelY < 0)) &&
-        (dx !== oldVelX || dz !== oldVelZ)) {
+      (entity.onGround || (dy !== oldVelY && oldVelY < 0)) &&
+      (dx !== oldVelX || dz !== oldVelZ)) {
       const oldVelXCol = dx
       const oldVelYCol = dy
       const oldVelZCol = dz
@@ -300,6 +300,11 @@ function Physics (mcData, world) {
     return (block && (block.type === ladderId || block.type === vineId))
   }
 
+  function doesNotCollide (world, pos) {
+    const pBB = getPlayerBB(pos)
+    return !getSurroundingBBs(world, pBB).some(x => pBB.intersects(x)) && getWaterInBB(world, pBB).length === 0
+  }
+
   function moveEntityWithHeading (entity, world, strafe, forward) {
     const vel = entity.vel
     const pos = entity.pos
@@ -336,6 +341,7 @@ function Physics (mcData, world) {
       vel.z *= inertia
     } else {
       // Water / Lava movement
+      const lastY = pos.y
       const acceleration = physics.liquidAcceleration
       const inertia = entity.isInWater ? physics.waterInertia : physics.lavaInertia
       // TODO: depth strider enchantement (for water)
@@ -346,7 +352,7 @@ function Physics (mcData, world) {
       vel.x *= inertia
       vel.z *= inertia
 
-      if (entity.isCollidedHorizontally) { // TODO: && isOffsetPositionInLiquid
+      if (entity.isCollidedHorizontally && doesNotCollide(world, pos.offset(vel.x, vel.y + 0.6 - pos.y + lastY, vel.z))) {
         vel.y = physics.outOfLiquidImpulse // jump out of liquid
       }
     }
@@ -413,24 +419,30 @@ function Physics (mcData, world) {
     return flow.normalize()
   }
 
-  function isInWaterApplyCurrent (world, bb, vel) {
-    let isInWater = false
-    const acceleration = new Vec3(0, 0, 0)
+  function getWaterInBB (world, bb) {
+    const waterBlocks = []
     const cursor = new Vec3(0, 0, 0)
     for (cursor.y = Math.floor(bb.minY); cursor.y <= Math.floor(bb.maxY); cursor.y++) {
       for (cursor.z = Math.floor(bb.minZ); cursor.z <= Math.floor(bb.maxZ); cursor.z++) {
         for (cursor.x = Math.floor(bb.minX); cursor.x <= Math.floor(bb.maxX); cursor.x++) {
           const block = world.getBlock(cursor)
-          if (block && (block.type === waterId || waterLike.includes(block.type) || block.getProperties().waterlogged)) {
+          if (block && (block.type === waterId || waterLike.has(block.type) || block.getProperties().waterlogged)) {
             const waterLevel = cursor.y + 1 - getLiquidHeightPcent(block)
-            if (Math.ceil(bb.maxY) >= waterLevel) {
-              isInWater = true
-              const flow = getFlow(world, block)
-              acceleration.add(flow)
-            }
+            if (Math.ceil(bb.maxY) >= waterLevel) waterBlocks.push(block)
           }
         }
       }
+    }
+    return waterBlocks
+  }
+
+  function isInWaterApplyCurrent (world, bb, vel) {
+    const acceleration = new Vec3(0, 0, 0)
+    const waterBlocks = getWaterInBB(world, bb)
+    const isInWater = waterBlocks.length > 0
+    for (const block of waterBlocks) {
+      const flow = getFlow(world, block)
+      acceleration.add(flow)
     }
 
     const len = acceleration.norm()
