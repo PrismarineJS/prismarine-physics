@@ -51,13 +51,13 @@ function Physics (mcData, world) {
     outOfLiquidImpulse: 0.3,
     autojumpCooldown: 10, // ticks (0.5s)
     bubbleColumnSurfaceDrag: {
-      down: -0.03,
+      down: 0.03,
       maxDown: -0.9,
       up: 0.1,
       maxUp: 1.8
     },
     bubbleColumnDrag: {
-      down: -0.03,
+      down: 0.03,
       maxDown: -0.3,
       up: 0.06,
       maxUp: 0.7
@@ -250,19 +250,19 @@ function Physics (mcData, world) {
             } else if (block.type === webId) {
               entity.isInWeb = true
             } else if (block.type === bubblecolumnId) {
-              const drag = !block.getProperties().drag // FIXME: PrismarineJS/prismarine-block#15 remove negation when fixed
+              const drag = block.getProperties().drag
               const aboveBlock = world.getBlock(cursor.offset(0, 1, 0))
               if (aboveBlock && aboveBlock.type === airId) {
                 if (drag) {
                   vel.y = Math.max(physics.bubbleColumnSurfaceDrag.maxDown, vel.y - physics.bubbleColumnSurfaceDrag.down)
                 } else {
-                  Math.min(physics.bubbleColumnSurfaceDrag.maxUp, vel.y - physics.bubbleColumnSurfaceDrag.up)
+                  Math.min(physics.bubbleColumnSurfaceDrag.maxUp, vel.y + physics.bubbleColumnSurfaceDrag.up)
                 }
               } else {
                 if (drag) {
                   vel.y = Math.max(physics.bubbleColumnDrag.maxDown, vel.y - physics.bubbleColumnDrag.down)
                 } else {
-                  vel.y = Math.min(physics.bubbleColumnDrag.maxUp, vel.y - physics.bubbleColumnDrag.up)
+                  vel.y = Math.min(physics.bubbleColumnDrag.maxUp, vel.y + physics.bubbleColumnDrag.up)
                 }
               }
             }
@@ -367,7 +367,7 @@ function Physics (mcData, world) {
   function getRenderedDepth (block) {
     if (!block) return -1
     if (block.type === bubblecolumnId) return 0
-    if (block.getProperties().waterlogged !== undefined && !block.getProperties().waterlogged) return 0 // FIXME: PrismarineJS/prismarine-block#15 remove negation and undefined check when fixed
+    if (block.getProperties().waterlogged) return 0
     if (block.type !== waterId) return -1
     const meta = block.metadata
     return meta >= 8 ? 0 : meta
@@ -416,7 +416,7 @@ function Physics (mcData, world) {
       for (cursor.z = Math.floor(bb.minZ); cursor.z <= Math.floor(bb.maxZ); cursor.z++) {
         for (cursor.x = Math.floor(bb.minX); cursor.x <= Math.floor(bb.maxX); cursor.x++) {
           const block = world.getBlock(cursor)
-          if (block && (block.type === waterId || block.type === bubblecolumnId || (block.getProperties().waterlogged !== undefined && !block.getProperties().waterlogged))) { // FIXME: PrismarineJS/prismarine-block#15 remove negation and undefined check when fixed
+          if (block && (block.type === waterId || block.type === bubblecolumnId || block.getProperties().waterlogged)) {
             const waterLevel = cursor.y + 1 - getLiquidHeightPcent(block)
             if (Math.ceil(bb.maxY) >= waterLevel) {
               isInWater = true
