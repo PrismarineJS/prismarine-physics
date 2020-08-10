@@ -26,8 +26,8 @@ function Physics (mcData, world) {
   const lavaId = blocksByName.lava.id
   const ladderId = blocksByName.ladder.id
   const vineId = blocksByName.vine.id
+  const bubblecolumnId = blocksByName.bubble_column ? blocksByName.bubble_column.id : -1 // 1.13+
   const airId = blocksByName.air.id
-  const bubblecolumnId = blocksByName.bubble_column.id
 
   const physics = {
     gravity: 0.08, // blocks/tick^2 https://minecraft.gamepedia.com/Entity#Motion_of_entities
@@ -250,7 +250,7 @@ function Physics (mcData, world) {
             } else if (block.type === webId) {
               entity.isInWeb = true
             } else if (block.type === bubblecolumnId) {
-              const drag = block.getProperties().drag
+              const drag = !block.getProperties().drag // FIXME: PrismarineJS/prismarine-block#15 remove negation when fixed
               const aboveBlock = world.getBlock(cursor.offset(0, 1, 0))
               if (aboveBlock && aboveBlock.type === airId) {
                 if (drag) {
@@ -365,7 +365,10 @@ function Physics (mcData, world) {
   }
 
   function getRenderedDepth (block) {
-    if (!block || block.type !== waterId) return -1
+    if (!block) return -1
+    if (block.type === bubblecolumnId) return 0
+    if (block.getProperties().waterlogged !== undefined && !block.getProperties().waterlogged) return 0 // FIXME: PrismarineJS/prismarine-block#15 remove negation and undefined check when fixed
+    if (block.type !== waterId) return -1
     const meta = block.metadata
     return meta >= 8 ? 0 : meta
   }
@@ -413,7 +416,7 @@ function Physics (mcData, world) {
       for (cursor.z = Math.floor(bb.minZ); cursor.z <= Math.floor(bb.maxZ); cursor.z++) {
         for (cursor.x = Math.floor(bb.minX); cursor.x <= Math.floor(bb.maxX); cursor.x++) {
           const block = world.getBlock(cursor)
-          if (block && block.type === waterId) {
+          if (block && (block.type === waterId || block.type === bubblecolumnId || (block.getProperties().waterlogged !== undefined && !block.getProperties().waterlogged))) { // FIXME: PrismarineJS/prismarine-block#15 remove negation and undefined check when fixed
             const waterLevel = cursor.y + 1 - getLiquidHeightPcent(block)
             if (Math.ceil(bb.maxY) >= waterLevel) {
               isInWater = true
