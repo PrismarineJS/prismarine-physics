@@ -23,6 +23,7 @@ function Physics (mcData, world) {
 
   // Block ids
   const soulsandId = blocksByName.soul_sand.id
+  const honeyblockId = blocksByName.honey_block ? blocksByName.honey_block.id : -1 // 1.15+
   const webId = blocksByName.cobweb ? blocksByName.cobweb.id : blocksByName.web.id
   const waterId = blocksByName.water.id
   const lavaId = blocksByName.lava.id
@@ -44,6 +45,8 @@ function Physics (mcData, world) {
     stepHeight: 0.6, // how much height can the bot step on without jump
     negligeableVelocity: 0.003, // actually 0.005 for 1.8, but seems fine
     soulsandSpeed: 0.4,
+    honeyblockSpeed: 0.4,
+    honeyblockJumpSpeed: 0.4,
     ladderMaxSpeed: 0.15,
     ladderClimbSpeed: 0.2,
     playerHalfWidth: 0.3,
@@ -67,13 +70,18 @@ function Physics (mcData, world) {
       maxDown: -0.3,
       up: 0.06,
       maxUp: 0.7
-    }
+    },
+    slowFalling: 0.125,
+    speedEffect: 1.2,
+    slowEffect: 0.85
   }
 
-  if (supportFeature('independentWaterGravity')) {
+  if (supportFeature('independentLiquidGravity')) {
     physics.waterGravity = 0.02
-  } else if (supportFeature('proportionalWaterGravity')) {
+    physics.lavaGravity = 0.02
+  } else if (supportFeature('proportionalLiquidGravity')) {
     physics.waterGravity = physics.gravity / 16
+    physics.lavaGravity = physics.gravity / 4
   }
 
   function getPlayerBB (pos) {
@@ -251,14 +259,17 @@ function Physics (mcData, world) {
     // Finally, apply block collisions (web, soulsand...)
     playerBB.contract(0.001, 0.001, 0.001)
     const cursor = new Vec3(0, 0, 0)
+    let onSoulSand = false
+    let onHoneyBlock = false
     for (cursor.y = Math.floor(playerBB.minY); cursor.y <= Math.floor(playerBB.maxY); cursor.y++) {
       for (cursor.z = Math.floor(playerBB.minZ); cursor.z <= Math.floor(playerBB.maxZ); cursor.z++) {
         for (cursor.x = Math.floor(playerBB.minX); cursor.x <= Math.floor(playerBB.maxX); cursor.x++) {
           const block = world.getBlock(cursor)
           if (block) {
             if (block.type === soulsandId) {
-              vel.x *= physics.soulsandSpeed
-              vel.z *= physics.soulsandSpeed
+              onSoulSand = true
+            } else if (block.type === honeyblockId) {
+              onHoneyBlock = false
             } else if (block.type === webId) {
               entity.isInWeb = true
             } else if (block.type === bubblecolumnId) {
@@ -274,6 +285,14 @@ function Physics (mcData, world) {
           }
         }
       }
+    }
+    if (onSoulSand) { // dont apply soulsand slowdown several times if standing on the edge of the block
+      vel.x *= physics.soulsandSpeed
+      vel.z *= physics.soulsandSpeed
+    }
+    if (onHoneyBlock) { // see above
+      vel.x *= physics.honeyblockSpeed
+      vel.z *= physics.honeyblockSpeed
     }
   }
 
@@ -309,6 +328,8 @@ function Physics (mcData, world) {
     const vel = entity.vel
     const pos = entity.pos
 
+    const gravityMultiplier = (vel.y <= 0 && entity.slowFalling > 0) ? physics.slowFalling : 1
+
     if (!entity.isInWater && !entity.isInLava) {
       // Normal movement
       let acceleration = physics.airborneAcceleration
@@ -319,6 +340,8 @@ function Physics (mcData, world) {
         acceleration = 0.1 * (0.1627714 / (inertia * inertia * inertia))
       }
       if (entity.control.sprint) acceleration *= physics.sprintSpeed
+      if (entity.speed > 0) acceleration *= physics.speedEffect * entity.speed
+      if (entity.slowness > 0) acceleration *= physics.slowEffect * entity.slowness
 
       applyHeading(entity, strafe, forward, acceleration)
 
@@ -335,22 +358,43 @@ function Physics (mcData, world) {
       }
 
       // Apply friction and gravity
-      vel.y -= physics.gravity
+      if (entity.levitation > 0) {
+        vel.y += (0.05 * entity.levitation - vel.y) * 0.2
+      } else {
+        vel.y -= physics.gravity * gravityMultiplier
+      }
       vel.y *= physics.airdrag
       vel.x *= inertia
       vel.z *= inertia
     } else {
       // Water / Lava movement
       const lastY = pos.y
-      const acceleration = physics.liquidAcceleration
+      let acceleration = physics.liquidAcceleration
       const inertia = entity.isInWater ? physics.waterInertia : physics.lavaInertia
-      // TODO: depth strider enchantement (for water)
+      let horizontalInertia = inertia
+
+      if (entity.isInWater) {
+        let strider = entity.depthStrider
+        if (strider > 3) {
+          strider = 3
+        }
+        if (!entity.onGround) {
+          strider *= 0.5
+        }
+        if (strider > 0) {
+          horizontalInertia += (0.546 - horizontalInertia) * strider / 3
+          acceleration += (0.7 - acceleration) * strider / 3
+        }
+
+        if (entity.dolphinsGrace > 0) horizontalInertia = 0.96
+      }
+
       applyHeading(entity, strafe, forward, acceleration)
       moveEntity(entity, world, vel.x, vel.y, vel.z)
       vel.y *= inertia
-      vel.y -= physics.waterGravity
-      vel.x *= inertia
-      vel.z *= inertia
+      vel.y -= (entity.isInWater ? physics.waterGravity : physics.lavaGravity) * gravityMultiplier
+      vel.x *= horizontalInertia
+      vel.z *= horizontalInertia
 
       if (entity.isCollidedHorizontally && doesNotCollide(world, pos.offset(vel.x, vel.y + 0.6 - pos.y + lastY, vel.z))) {
         vel.y = physics.outOfLiquidImpulse // jump out of liquid
@@ -475,8 +519,11 @@ function Physics (mcData, world) {
       if (entity.isInWater || entity.isInLava) {
         vel.y += 0.04
       } else if (entity.onGround && entity.jumpTicks === 0) {
-        vel.y = 0.42
-        // TODO: jump potion effect
+        const blockBelow = world.getBlock(entity.pos.floored().offset(0, -0.5, 0))
+        vel.y = 0.42 * ((blockBelow && blockBelow.type === honeyblockId) ? physics.honeyblockJumpSpeed : 1)
+        if (entity.jumpBoost > 0) {
+          vel.y += 0.1 * entity.jumpBoost
+        }
         if (entity.control.sprint) {
           const yaw = Math.PI - entity.yaw
           vel.x -= Math.sin(yaw) * 0.2
@@ -507,6 +554,8 @@ function Physics (mcData, world) {
 
 class PlayerState {
   constructor (bot, control) {
+    const mcData = require('minecraft-data')(bot.version)
+
     // Input / Outputs
     this.pos = bot.entity.position.clone()
     this.vel = bot.entity.velocity.clone()
@@ -522,6 +571,29 @@ class PlayerState {
     // Input only (not modified)
     this.yaw = bot.entity.yaw
     this.control = control
+    // effects
+    this.jumpBoost = bot.entity.effects[mcData.effectsByName.JumpBoost.id] ? bot.entity.effects[mcData.effectsByName.JumpBoost.id].amplifier + 1 : 0
+    this.speed = bot.entity.effects[mcData.effectsByName.Speed.id] ? bot.entity.effects[mcData.effectsByName.Speed.id].amplifier + 1 : 0
+    this.slowness = bot.entity.effects[mcData.effectsByName.Slowness.id] ? bot.entity.effects[mcData.effectsByName.Slowness.id].amplifier + 1 : 0
+    if (mcData.effectsByName.DolphinsGrace) { // 1.13+
+      this.dolphinsGrace = bot.entity.effects[mcData.effectsByName.DolphinsGrace.id] ? bot.entity.effects[mcData.effectsByName.DolphinsGrace.id].amplifier + 1 : 0
+    } else {
+      this.dolphinsGrace = 0
+    }
+    if (mcData.effectsByName.SlowFalling) { // 1.13+
+      this.slowFalling = bot.entity.effects[mcData.effectsByName.SlowFalling.id] ? bot.entity.effects[mcData.effectsByName.SlowFalling.id].amplifier + 1 : 0
+    } else {
+      this.slowFalling = 0
+    }
+    if (mcData.effectsByName.Levitation) { // 1.9+
+      this.levitation = bot.entity.effects[mcData.effectsByName.Levitation.id] ? bot.entity.effects[mcData.effectsByName.Levitation.id].amplifier + 1 : 0
+    } else {
+      this.levitation = 0
+    }
+    // armour enchantments
+    const boots = bot.inventory.items()[7]
+    this.depthStrider = boots && boots.nbt.value.Enchantments && boots.nbt.value.Enchantments.some(x => x.id === mcData.enchantmentsByName.depth_strider.id)
+      ? boots.nbt.value.Enchantments.find(x => x.id === mcData.enchantmentsByName.depth_strider.id).lvl : 0
   }
 
   apply (bot) {

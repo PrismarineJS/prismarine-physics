@@ -26,10 +26,15 @@ function fakePlayer (pos) {
       isInWeb: false,
       isCollidedHorizontally: false,
       isCollidedVertically: false,
-      yaw: 0
+      yaw: 0,
+      effects: {}
     },
     jumpTicks: 0,
-    jumpQueued: false
+    jumpQueued: false,
+    version: '1.13.2',
+    inventory: {
+      items: () => []
+    }
   }
 }
 
