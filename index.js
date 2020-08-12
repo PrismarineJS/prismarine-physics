@@ -259,18 +259,21 @@ function Physics (mcData, world) {
     // Finally, apply block collisions (web, soulsand...)
     playerBB.contract(0.001, 0.001, 0.001)
     const cursor = new Vec3(0, 0, 0)
-    let onSoulSand = false
-    let onHoneyBlock = false
     for (cursor.y = Math.floor(playerBB.minY); cursor.y <= Math.floor(playerBB.maxY); cursor.y++) {
       for (cursor.z = Math.floor(playerBB.minZ); cursor.z <= Math.floor(playerBB.maxZ); cursor.z++) {
         for (cursor.x = Math.floor(playerBB.minX); cursor.x <= Math.floor(playerBB.maxX); cursor.x++) {
           const block = world.getBlock(cursor)
           if (block) {
-            if (block.type === soulsandId) {
-              onSoulSand = true
-            } else if (block.type === honeyblockId) {
-              onHoneyBlock = false
-            } else if (block.type === webId) {
+            if (supportFeature('velocityBlocksOnCollision')) {
+              if (block.type === soulsandId) {
+                vel.x *= physics.soulsandSpeed
+                vel.z *= physics.soulsandSpeed
+              } else if (block.type === honeyblockId) {
+                vel.x *= physics.honeyblockSpeed
+                vel.z *= physics.honeyblockSpeed
+              }
+            }
+            if (block.type === webId) {
               entity.isInWeb = true
             } else if (block.type === bubblecolumnId) {
               const down = !block.metadata
@@ -286,13 +289,15 @@ function Physics (mcData, world) {
         }
       }
     }
-    if (onSoulSand) { // dont apply soulsand slowdown several times if standing on the edge of the block
-      vel.x *= physics.soulsandSpeed
-      vel.z *= physics.soulsandSpeed
-    }
-    if (onHoneyBlock) { // see above
-      vel.x *= physics.honeyblockSpeed
-      vel.z *= physics.honeyblockSpeed
+    if (supportFeature('velocityBlocksOnTop')) {
+      const blockBelow = world.getBlock(entity.pos.floored().offset(0, -0.5, 0))
+      if (blockBelow.type === soulsandId) {
+        vel.x *= physics.soulsandSpeed
+        vel.z *= physics.soulsandSpeed
+      } else if (blockBelow.type === honeyblockId) {
+        vel.x *= physics.honeyblockSpeed
+        vel.z *= physics.honeyblockSpeed
+      }
     }
   }
 
@@ -374,10 +379,7 @@ function Physics (mcData, world) {
       let horizontalInertia = inertia
 
       if (entity.isInWater) {
-        let strider = entity.depthStrider
-        if (strider > 3) {
-          strider = 3
-        }
+        let strider = Math.min(entity.depthStrider, 3)
         if (!entity.onGround) {
           strider *= 0.5
         }
