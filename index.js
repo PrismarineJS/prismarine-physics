@@ -291,12 +291,14 @@ function Physics (mcData, world) {
     }
     if (supportFeature('velocityBlocksOnTop')) {
       const blockBelow = world.getBlock(entity.pos.floored().offset(0, -0.5, 0))
-      if (blockBelow.type === soulsandId) {
-        vel.x *= physics.soulsandSpeed
-        vel.z *= physics.soulsandSpeed
-      } else if (blockBelow.type === honeyblockId) {
-        vel.x *= physics.honeyblockSpeed
-        vel.z *= physics.honeyblockSpeed
+      if (blockBelow) {
+        if (blockBelow.type === soulsandId) {
+          vel.x *= physics.soulsandSpeed
+          vel.z *= physics.soulsandSpeed
+        } else if (blockBelow.type === honeyblockId) {
+          vel.x *= physics.honeyblockSpeed
+          vel.z *= physics.honeyblockSpeed
+        }
       }
     }
   }
