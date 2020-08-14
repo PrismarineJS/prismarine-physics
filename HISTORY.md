@@ -1,5 +1,9 @@
 ## History
 
+### 1.0.4
+
+* Fix null block error
+
 ### 1.0.3
 
 * Improve 1.13+ physics (thanks @IdanHo)
