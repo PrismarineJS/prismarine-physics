@@ -1,6 +1,6 @@
 {
   "name": "prismarine-physics",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Provide the physics engine for minecraft entities",
   "main": "index.js",
   "directories": {
@@ -30,12 +30,12 @@
   "homepage": "https://github.com/PrismarineJS/prismarine-physics#readme",
   "devDependencies": {
     "jest": "^26.1.0",
-    "minecraft-data": "^2.61.0",
-    "prismarine-block": "^1.6.0",
+    "minecraft-data": "^2.63.0",
+    "prismarine-block": "^1.7.1",
     "require-self": "^0.2.3",
     "standard": "^14.3.4"
   },
   "dependencies": {
-    "vec3": "^0.1.5"
+    "vec3": "^0.1.6"
   }
 }
