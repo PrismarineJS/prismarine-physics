@@ -596,7 +596,7 @@ class PlayerState {
     }
     // armour enchantments
     const boots = bot.inventory.items()[7]
-    this.depthStrider = boots && boots.nbt.value.Enchantments && boots.nbt.value.Enchantments.some(x => x.id === mcData.enchantmentsByName.depth_strider.id)
+    this.depthStrider = boots && boots.nbt && boots.nbt.value.Enchantments && boots.nbt.value.Enchantments.some(x => x.id === mcData.enchantmentsByName.depth_strider.id)
       ? boots.nbt.value.Enchantments.find(x => x.id === mcData.enchantmentsByName.depth_strider.id).lvl : 0
   }
 
