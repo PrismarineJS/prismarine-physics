@@ -1,5 +1,9 @@
 ## History
 
+### 1.0.5
+
+* Handle missing nbt data for boots
+
 ### 1.0.4
 
 * Fix null block error
