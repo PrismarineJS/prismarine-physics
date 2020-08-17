@@ -1,5 +1,9 @@
 ## History
 
+### 1.0.6
+
+* fix Depth Strider Enchantment not working
+
 ### 1.0.5
 
 * Handle missing nbt data for boots
