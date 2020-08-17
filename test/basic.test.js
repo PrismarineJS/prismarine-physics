@@ -33,7 +33,7 @@ function fakePlayer (pos) {
     jumpQueued: false,
     version: '1.13.2',
     inventory: {
-      items: () => []
+      slots: []
     }
   }
 }
