@@ -559,6 +559,7 @@ function Physics (mcData, world) {
 class PlayerState {
   constructor (bot, control) {
     const mcData = require('minecraft-data')(bot.version)
+    const nbt = require('prismarine-nbt')
 
     // Input / Outputs
     this.pos = bot.entity.position.clone()
@@ -596,8 +597,13 @@ class PlayerState {
     }
     // armour enchantments
     const boots = bot.inventory.slots[8]
-    this.depthStrider = boots && boots.nbt && boots.nbt.value.Enchantments && boots.nbt.value.Enchantments.some(x => x.id === mcData.enchantmentsByName.depth_strider.id)
-      ? boots.nbt.value.Enchantments.find(x => x.id === mcData.enchantmentsByName.depth_strider.id).lvl : 0
+    if (boots && boots.nbt) {
+      const enchantments = nbt.simplify(boots.nbt).Enchantments
+      const depthEnchant = enchantments.find(x => x.id === mcData.enchantmentsByName.depth_strider.id || x.id === ('minecraft:' + mcData.enchantmentsByName.depth_strider.name))
+      this.depthStrider = depthEnchant ? depthEnchant.lvl : 0
+    } else {
+      this.depthStrider = 0
+    }
   }
 
   apply (bot) {
