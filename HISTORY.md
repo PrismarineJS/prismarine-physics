@@ -1,5 +1,9 @@
 ## History
 
+### 1.0.7
+
+ Use prismarine-nbt to cleanly handle nbt + check for name enchantments post-flattening
+
 ### 1.0.6
 
 * fix Depth Strider Enchantment not working
