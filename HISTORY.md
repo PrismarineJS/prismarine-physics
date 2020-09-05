@@ -1,8 +1,12 @@
 ## History
 
+### 1.0.8
+
+* Fix NBT enchantment issue on 1.13 clients (thanks @embeddedt)
+
 ### 1.0.7
 
- Use prismarine-nbt to cleanly handle nbt + check for name enchantments post-flattening
+* Use prismarine-nbt to cleanly handle nbt + check for name enchantments post-flattening
 
 ### 1.0.6
 
