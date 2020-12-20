@@ -355,10 +355,14 @@ function Physics (mcData, world) {
       if (isOnLadder(world, pos)) {
         vel.x = math.clamp(-physics.ladderMaxSpeed, vel.x, physics.ladderMaxSpeed)
         vel.z = math.clamp(-physics.ladderMaxSpeed, vel.z, physics.ladderMaxSpeed)
-        vel.y = Math.max(entity.control.jump ? physics.ladderClimbSpeed : vel.y, entity.control.sneak ? 0 : -physics.ladderMaxSpeed)
+        vel.y = Math.max(vel.y, entity.control.sneak ? 0 : -physics.ladderMaxSpeed)
       }
 
       moveEntity(entity, world, vel.x, vel.y, vel.z)
+
+      if (entity.isCollidedHorizontally && isOnLadder(world, pos)) {
+        vel.y = physics.ladderClimbSpeed // climb ladder
+      }
 
       // Apply friction and gravity
       if (entity.levitation > 0) {
@@ -396,7 +400,7 @@ function Physics (mcData, world) {
       vel.x *= horizontalInertia
       vel.z *= horizontalInertia
 
-      if (doesNotCollide(world, pos.offset(vel.x, vel.y + 0.6 - pos.y + lastY, vel.z))) {
+      if (entity.isCollidedHorizontally && doesNotCollide(world, pos.offset(vel.x, vel.y + 0.6 - pos.y + lastY, vel.z))) {
         vel.y = physics.outOfLiquidImpulse // jump out of liquid
       }
     }
