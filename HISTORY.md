@@ -1,5 +1,9 @@
 ## History
 
+### 1.1.0
+
+* Support climb using jump (1.14+)
+
 ### 1.0.8
 
 * Fix NBT enchantment issue on 1.13 clients (thanks @embeddedt)
