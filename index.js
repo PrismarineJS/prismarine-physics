@@ -360,7 +360,8 @@ function Physics (mcData, world) {
 
       moveEntity(entity, world, vel.x, vel.y, vel.z)
 
-      if (entity.isCollidedHorizontally && isOnLadder(world, pos)) {
+      if (isOnLadder(world, pos) && (entity.isCollidedHorizontally ||
+        (supportFeature('climbUsingJump') && entity.control.jump))) {
         vel.y = physics.ladderClimbSpeed // climb ladder
       }
 

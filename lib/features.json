@@ -18,5 +18,10 @@
     "name": "velocityBlocksOnTop",
     "description": "Velocity changes are caused by the block the player is standing on",
     "versions": ["1.15", "1.16"]
+  },
+  {
+    "name": "climbUsingJump",
+    "description": "Entity can climb ladders and vines by pressing jump",
+    "versions": ["1.14", "1.15", "1.16"]
   }
 ]
