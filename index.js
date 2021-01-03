@@ -142,9 +142,39 @@ function Physics (mcData, world) {
       entity.isInWeb = false
     }
 
-    const oldVelX = dx
+    let oldVelX = dx
     const oldVelY = dy
-    const oldVelZ = dz
+    let oldVelZ = dz
+
+    if (entity.control.sneak && entity.onGround) {
+      const step = 0.05
+
+      // In the 3 loops bellow, y offset should be -1, but that doesnt reproduce vanilla behavior.
+      for (; dx !== 0 && getSurroundingBBs(world, getPlayerBB(pos).offset(dx, 0, 0)).length === 0; oldVelX = dx) {
+        if (dx < step && dx >= -step) dx = 0
+        else if (dx > 0) dx -= step
+        else dx += step
+      }
+
+      for (; dz !== 0 && getSurroundingBBs(world, getPlayerBB(pos).offset(0, 0, dz)).length === 0; oldVelZ = dz) {
+        if (dz < step && dz >= -step) dz = 0
+        else if (dz > 0) dz -= step
+        else dz += step
+      }
+
+      while (dx !== 0 && dz !== 0 && getSurroundingBBs(world, getPlayerBB(pos).offset(dx, 0, dz)).length === 0) {
+        if (dx < step && dx >= -step) dx = 0
+        else if (dx > 0) dx -= step
+        else dx += step
+
+        if (dz < step && dz >= -step) dz = 0
+        else if (dz > 0) dz -= step
+        else dz += step
+
+        oldVelX = dx
+        oldVelZ = dz
+      }
+    }
 
     let playerBB = getPlayerBB(pos)
     const queryBB = playerBB.clone().extend(dx, dy, dz)
