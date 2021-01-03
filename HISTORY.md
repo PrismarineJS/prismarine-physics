@@ -1,5 +1,9 @@
 ## History
 
+### 1.2.0
+
+* Add edge security when sneaking
+
 ### 1.1.0
 
 * Support climb using jump (1.14+)
