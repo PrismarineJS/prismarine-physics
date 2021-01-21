@@ -38,7 +38,7 @@ function Physics (mcData, world) {
 
   const physics = {
     gravity: 0.08, // blocks/tick^2 https://minecraft.gamepedia.com/Entity#Motion_of_entities
-    airdrag: (1 - 0.02), // actually (1 - drag)
+    airdrag: Math.fround(1 - 0.02), // actually (1 - drag)
     yawSpeed: 3.0,
     sprintSpeed: 1.3,
     sneakSpeed: 0.3,
