@@ -1,5 +1,9 @@
 ## History
 
+### 1.2.1
+
+* Fix airdrag value
+
 ### 1.2.0
 
 * Add edge security when sneaking
