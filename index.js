@@ -555,7 +555,7 @@ function Physics (mcData, world) {
         vel.y += 0.04
       } else if (entity.onGround && entity.jumpTicks === 0) {
         const blockBelow = world.getBlock(entity.pos.floored().offset(0, -0.5, 0))
-        vel.y = 0.419999986886978 * ((blockBelow && blockBelow.type === honeyblockId) ? physics.honeyblockJumpSpeed : 1)
+        vel.y = Math.fround(0.42) * ((blockBelow && blockBelow.type === honeyblockId) ? physics.honeyblockJumpSpeed : 1)
         if (entity.jumpBoost > 0) {
           vel.y += 0.1 * entity.jumpBoost
         }
