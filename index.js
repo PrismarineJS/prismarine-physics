@@ -38,7 +38,7 @@ function Physics (mcData, world) {
 
   const physics = {
     gravity: 0.08, // blocks/tick^2 https://minecraft.gamepedia.com/Entity#Motion_of_entities
-    airdrag: 0.9800000190734863, // actually (1 - drag)
+    airdrag: Math.fround(1 - 0.02), // actually (1 - drag)
     yawSpeed: 3.0,
     sprintSpeed: 1.3,
     sneakSpeed: 0.3,
@@ -555,7 +555,7 @@ function Physics (mcData, world) {
         vel.y += 0.04
       } else if (entity.onGround && entity.jumpTicks === 0) {
         const blockBelow = world.getBlock(entity.pos.floored().offset(0, -0.5, 0))
-        vel.y = 0.42 * ((blockBelow && blockBelow.type === honeyblockId) ? physics.honeyblockJumpSpeed : 1)
+        vel.y = Math.fround(0.42) * ((blockBelow && blockBelow.type === honeyblockId) ? physics.honeyblockJumpSpeed : 1)
         if (entity.jumpBoost > 0) {
           vel.y += 0.1 * entity.jumpBoost
         }
