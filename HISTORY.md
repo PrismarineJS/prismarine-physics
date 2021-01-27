@@ -1,5 +1,9 @@
 ## History
 
+### 1.2.2
+
+* Fix jump floating point value
+
 ### 1.2.1
 
 * Fix airdrag value
