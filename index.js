@@ -3,8 +3,12 @@ const AABB = require('./lib/aabb')
 const math = require('./lib/math')
 const features = require('./lib/features')
 
+function makeSupportFeature (mcData) {
+  return feature => features.some(({ name, versions }) => name === feature && versions.includes(mcData.version.majorVersion))
+}
+
 function Physics (mcData, world) {
-  const supportFeature = feature => features.some(({ name, versions }) => name === feature && versions.includes(mcData.version.majorVersion))
+  const supportFeature = makeSupportFeature(mcData)
   const blocksByName = mcData.blocksByName
 
   // Block Slipperiness
@@ -587,10 +591,63 @@ function Physics (mcData, world) {
   return physics
 }
 
+function getEffectLevel (mcData, effectName, effects) {
+  const effectDescriptor = mcData.effectsByName[effectName]
+  if (!effectDescriptor) {
+    return 0
+  }
+  const effectInfo = effects[effectDescriptor.id]
+  if (!effectInfo) {
+    return 0
+  }
+  return effectInfo.amplifier + 1
+}
+
+function getEnchantmentLevel (mcData, enchantmentName, enchantments) {
+  const enchantmentDescriptor = mcData.enchantmentsByName[enchantmentName]
+  if (!enchantmentDescriptor) {
+    return 0
+  }
+
+  for (const enchInfo of enchantments) {
+    if (typeof enchInfo.id === 'string') {
+      if (enchInfo.id.includes(enchantmentName)) {
+        return enchInfo.lvl
+      }
+    } else if (enchInfo.id === enchantmentDescriptor.id) {
+      return enchInfo.lvl
+    }
+  }
+  return 0
+}
+
+function getStatusEffectNamesForVersion (supportFeature) {
+  if (supportFeature('effectNamesAreRegistryNames')) {
+    return {
+      jumpBoostEffectName: 'jump_boost',
+      speedEffectName: 'speed',
+      slownessEffectName: 'slowness',
+      dolphinsGraceEffectName: 'dolphins_grace',
+      slowFallingEffectName: 'slow_falling',
+      levitationEffectName: 'levitation'
+    }
+  } else {
+    return {
+      jumpBoostEffectName: 'JumpBoost',
+      speedEffectName: 'Speed',
+      slownessEffectName: 'Slowness',
+      dolphinsGraceEffectName: 'DolphinsGrace',
+      slowFallingEffectName: 'SlowFalling',
+      levitationEffectName: 'Levitation'
+    }
+  }
+}
+
 class PlayerState {
   constructor (bot, control) {
     const mcData = require('minecraft-data')(bot.version)
     const nbt = require('prismarine-nbt')
+    const supportFeature = makeSupportFeature(mcData)
 
     // Input / Outputs
     this.pos = bot.entity.position.clone()
@@ -607,32 +664,25 @@ class PlayerState {
     // Input only (not modified)
     this.yaw = bot.entity.yaw
     this.control = control
+
     // effects
-    this.jumpBoost = bot.entity.effects[mcData.effectsByName.JumpBoost.id] ? bot.entity.effects[mcData.effectsByName.JumpBoost.id].amplifier + 1 : 0
-    this.speed = bot.entity.effects[mcData.effectsByName.Speed.id] ? bot.entity.effects[mcData.effectsByName.Speed.id].amplifier + 1 : 0
-    this.slowness = bot.entity.effects[mcData.effectsByName.Slowness.id] ? bot.entity.effects[mcData.effectsByName.Slowness.id].amplifier + 1 : 0
-    if (mcData.effectsByName.DolphinsGrace) { // 1.13+
-      this.dolphinsGrace = bot.entity.effects[mcData.effectsByName.DolphinsGrace.id] ? bot.entity.effects[mcData.effectsByName.DolphinsGrace.id].amplifier + 1 : 0
-    } else {
-      this.dolphinsGrace = 0
-    }
-    if (mcData.effectsByName.SlowFalling) { // 1.13+
-      this.slowFalling = bot.entity.effects[mcData.effectsByName.SlowFalling.id] ? bot.entity.effects[mcData.effectsByName.SlowFalling.id].amplifier + 1 : 0
-    } else {
-      this.slowFalling = 0
-    }
-    if (mcData.effectsByName.Levitation) { // 1.9+
-      this.levitation = bot.entity.effects[mcData.effectsByName.Levitation.id] ? bot.entity.effects[mcData.effectsByName.Levitation.id].amplifier + 1 : 0
-    } else {
-      this.levitation = 0
-    }
+    const effects = bot.entity.effects
+    const statusEffectNames = getStatusEffectNamesForVersion(supportFeature)
+
+    this.jumpBoost = getEffectLevel(mcData, statusEffectNames.jumpBoostEffectName, effects)
+    this.speed = getEffectLevel(mcData, statusEffectNames.speedEffectName, effects)
+    this.slowness = getEffectLevel(mcData, statusEffectNames.slownessEffectName, effects)
+
+    this.dolphinsGrace = getEffectLevel(mcData, statusEffectNames.dolphinsGraceEffectName, effects)
+    this.slowFalling = getEffectLevel(mcData, statusEffectNames.slowFallingEffectName, effects)
+    this.levitation = getEffectLevel(mcData, statusEffectNames.levitationEffectName, effects)
+
     // armour enchantments
     const boots = bot.inventory.slots[8]
     if (boots && boots.nbt) {
       const simplifiedNbt = nbt.simplify(boots.nbt)
-      const enchantments = simplifiedNbt.Enchantments || simplifiedNbt.ench
-      const depthEnchant = enchantments ? enchantments.find(x => x.id === mcData.enchantmentsByName.depth_strider.id || x.id === ('minecraft:' + mcData.enchantmentsByName.depth_strider.name)) : null
-      this.depthStrider = depthEnchant ? depthEnchant.lvl : 0
+      const enchantments = simplifiedNbt.Enchantments ?? simplifiedNbt.ench ?? []
+      this.depthStrider = getEnchantmentLevel(mcData, 'depth_strider', enchantments)
     } else {
       this.depthStrider = 0
     }
