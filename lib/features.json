@@ -27,6 +27,6 @@
   {
     "name": "effectNamesAreRegistryNames",
     "description": "Status effect names equal to their registry names",
-    "versions": ["1.17", "1.17"]
+    "versions": ["1.17"]
   }
 ]
