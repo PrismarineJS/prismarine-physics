@@ -1,5 +1,9 @@
 ## History
 
+### 1.3.0
+
+* support 1.17.0 (thanks @Archengius)
+
 ### 1.2.2
 
 * Fix jump floating point value
