@@ -723,7 +723,7 @@ class PlayerState {
     this.jumpTicks = bot.jumpTicks
     this.jumpQueued = bot.jumpQueued
     // Hardcoded AABB because can't access getPlayerBB()
-    this.intersectingEntities = supportFeature('entityCollision') ? getIntersectingEntities(new AABB(-0.3, 0, -0.3, 0.3, 1.8, 0.3).offset(this.pos.x, this.pos.y, this.pos.z), Object.values(bot.entities).filter((e) => e.id !== bot.entity.id)) : []
+    this.intersectingEntities = supportFeature('entityCollision') ? getIntersectingEntities(new AABB(-0.3, 0, -0.3, 0.3, 1.8, 0.3).offset(this.pos.x, this.pos.y, this.pos.z), Object.values(bot.entities ?? {}).filter((e) => e.id !== bot.entity.id)) : []
 
     // Input only (not modified)
     this.yaw = bot.entity.yaw
