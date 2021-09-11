@@ -557,7 +557,7 @@ function Physics (mcData, world) {
           xDist = xDist / maxDist
           zDist = zDist / maxDist
 
-          let multiplier = Math.min(1 / maxDist, 1)
+          const multiplier = Math.min(1 / maxDist, 1)
           xDist = xDist * multiplier * 0.05
           zDist = zDist * multiplier * 0.05
           // xDist = xDist * (1 - bot.entity.entityCollisionReduction) // Couldn't find any references, left in here commented because forge has it
