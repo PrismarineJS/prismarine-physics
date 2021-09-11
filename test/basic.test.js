@@ -31,6 +31,7 @@ function fakePlayer (pos) {
     },
     jumpTicks: 0,
     jumpQueued: false,
+    entities: {},
     version: '1.13.2',
     inventory: {
       slots: []
