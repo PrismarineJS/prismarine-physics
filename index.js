@@ -4,7 +4,10 @@ const math = require('./lib/math')
 const features = require('./lib/features')
 
 function makeSupportFeature (mcData) {
-  return feature => features.some(({ name, versions }) => name === feature && versions.includes(mcData.version.majorVersion))
+  return feature => features.some(({
+    name,
+    versions
+  }) => name === feature && versions.includes(mcData.version.majorVersion))
 }
 
 function Physics (mcData, world) {
@@ -537,6 +540,36 @@ function Physics (mcData, world) {
     return isInWater
   }
 
+  function getEntityCollision (theEntity, otherEntity) {
+    // This should always pass, physics tick shouldn't be emitted when bot is on a vehicle & players can't be ridden on
+    if (theEntity.vehicle !== otherEntity && otherEntity.vehicle !== theEntity) {
+      // Need to set noclip flag somewhere (?)
+      if (!theEntity.noClip && !otherEntity.noClip) {
+        const pos1 = theEntity.position
+        const pos2 = otherEntity.position
+
+        let xDist = pos1.x - pos2.x
+        let zDist = pos1.z - pos2.z
+        let maxDist = math.abs_max(xDist, zDist)
+
+        if (maxDist >= 0.01) {
+          maxDist = Math.sqrt(maxDist) // Don't know how the following gets the right value but it works so...
+          xDist = xDist / maxDist
+          zDist = zDist / maxDist
+
+          let multiplier = Math.min(1 / maxDist, 1)
+          xDist = xDist * multiplier * 0.05
+          zDist = zDist * multiplier * 0.05
+          // xDist = xDist * (1 - bot.entity.entityCollisionReduction) // Couldn't find any references, left in here commented because forge has it
+          // zDist = zDist * (1 - bot.entity.entityCollisionReduction)
+
+          return new Vec3(xDist, 0, zDist)
+        }
+      }
+    }
+    return new Vec3(0, 0, 0)
+  }
+
   physics.simulatePlayer = (entity, world) => {
     const vel = entity.vel
     const pos = entity.pos
@@ -551,6 +584,12 @@ function Physics (mcData, world) {
     if (Math.abs(vel.x) < physics.negligeableVelocity) vel.x = 0
     if (Math.abs(vel.y) < physics.negligeableVelocity) vel.y = 0
     if (Math.abs(vel.z) < physics.negligeableVelocity) vel.z = 0
+
+    // Assuming entity = PlayerState
+    const intersectingEntities = entity.intersectingEntities
+    for (let i = 0; i < intersectingEntities.length; i++) {
+      vel.add(getEntityCollision(entity.bot.entity, intersectingEntities[i]))
+    }
 
     // Handle inputs
     if (entity.control.jump || entity.jumpQueued) {
@@ -643,6 +682,28 @@ function getStatusEffectNamesForVersion (supportFeature) {
   }
 }
 
+function getEntityBB (entity) {
+  const w = entity.width / 2
+  const pos = entity.position
+  return new AABB(-w, 0, -w, w, entity.height, w).offset(pos.x, pos.y, pos.z)
+}
+
+function getIntersectingEntities (bb, entityList) {
+  const entities = []
+
+  for (let i = 0; i < entityList.length; i++) {
+    const e = entityList[i]
+    if (e.type !== 'object') {
+      const entityBB = getEntityBB(e)
+      if (bb.intersects(entityBB)) {
+        entities.push(e)
+      }
+    }
+  }
+
+  return entities
+}
+
 class PlayerState {
   constructor (bot, control) {
     const mcData = require('minecraft-data')(bot.version)
@@ -650,6 +711,7 @@ class PlayerState {
     const supportFeature = makeSupportFeature(mcData)
 
     // Input / Outputs
+    this.bot = bot
     this.pos = bot.entity.position.clone()
     this.vel = bot.entity.velocity.clone()
     this.onGround = bot.entity.onGround
@@ -660,6 +722,8 @@ class PlayerState {
     this.isCollidedVertically = bot.entity.isCollidedVertically
     this.jumpTicks = bot.jumpTicks
     this.jumpQueued = bot.jumpQueued
+    // Hardcoded AABB because can't access getPlayerBB()
+    this.intersectingEntities = supportFeature('entityCollision') ? getIntersectingEntities(new AABB(-0.3, 0, -0.3, 0.3, 1.8, 0.3).offset(this.pos.x, this.pos.y, this.pos.z), Object.values(bot.entities).filter((e) => e.id !== bot.entity.id)) : []
 
     // Input only (not modified)
     this.yaw = bot.entity.yaw
