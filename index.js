@@ -586,9 +586,8 @@ function Physics (mcData, world) {
     if (Math.abs(vel.z) < physics.negligeableVelocity) vel.z = 0
 
     // Assuming entity = PlayerState
-    const intersectingEntities = entity.intersectingEntities
-    for (let i = 0; i < intersectingEntities.length; i++) {
-      vel.add(getEntityCollision(entity.bot.entity, intersectingEntities[i]))
+    for (const intersectingEntity of entity.intersectingEntities) {
+      vel.add(getEntityCollision(entity.bot.entity, intersectingEntity))
     }
 
     // Handle inputs
@@ -688,22 +687,6 @@ function getEntityBB (entity) {
   return new AABB(-w, 0, -w, w, entity.height, w).offset(pos.x, pos.y, pos.z)
 }
 
-function getIntersectingEntities (bb, entityList) {
-  const entities = []
-
-  for (let i = 0; i < entityList.length; i++) {
-    const e = entityList[i]
-    if (e.type !== 'object') {
-      const entityBB = getEntityBB(e)
-      if (bb.intersects(entityBB)) {
-        entities.push(e)
-      }
-    }
-  }
-
-  return entities
-}
-
 class PlayerState {
   constructor (bot, control) {
     const mcData = require('minecraft-data')(bot.version)
@@ -723,7 +706,8 @@ class PlayerState {
     this.jumpTicks = bot.jumpTicks
     this.jumpQueued = bot.jumpQueued
     // Hardcoded AABB because can't access getPlayerBB()
-    this.intersectingEntities = supportFeature('entityCollision') ? getIntersectingEntities(new AABB(-0.3, 0, -0.3, 0.3, 1.8, 0.3).offset(this.pos.x, this.pos.y, this.pos.z), Object.values(bot.entities ?? {}).filter((e) => e.id !== bot.entity.id)) : []
+    const bb = new AABB(-0.3, 0, -0.3, 0.3, 1.8, 0.3).offset(this.pos.x, this.pos.y, this.pos.z)
+    this.intersectingEntities = supportFeature('entityCollision') ? Object.values(bot.entities ?? []).filter((e) => e.id !== bot.entity.id && e.type !== 'object' && bb.intersects(getEntityBB(e))) : []
 
     // Input only (not modified)
     this.yaw = bot.entity.yaw
