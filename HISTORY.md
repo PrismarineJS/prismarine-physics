@@ -1,5 +1,9 @@
 ## History
 
+### 1.3.1
+
+* Add pitch speed
+
 ### 1.3.0
 
 * support 1.17.0 (thanks @Archengius)
