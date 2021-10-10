@@ -382,7 +382,7 @@ function Physics (mcData, world) {
         acceleration = 0.1 * (0.1627714 / (inertia * inertia * inertia))
       }
       if (entity.control.sprint) acceleration *= physics.sprintSpeed
-      if (entity.speed > 0  && entity.onGround) acceleration *= 1 + (physics.speedEffect * entity.speed)
+      if (entity.speed > 0 && entity.onGround) acceleration *= 1 + (physics.speedEffect * entity.speed)
       if (entity.slowness > 0) acceleration *= Math.max(1 - (physics.slowEffect * entity.slowness), 0)
 
       applyHeading(entity, strafe, forward, acceleration)
