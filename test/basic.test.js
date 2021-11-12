@@ -1,7 +1,8 @@
-/* eslint-env jest */
+/* eslint-env mocha */
 
 const { Physics, PlayerState } = require('prismarine-physics')
 const { Vec3 } = require('vec3')
+const expect = require('expect')
 
 const mcData = require('minecraft-data')('1.13.2')
 const Block = require('prismarine-block')('1.13.2')
@@ -39,7 +40,7 @@ function fakePlayer (pos) {
 }
 
 describe('Basic tests', () => {
-  test('Gravity test', () => {
+  it('Gravity test', () => {
     const physics = Physics(mcData, fakeWorld)
     const controls = {
       forward: false,

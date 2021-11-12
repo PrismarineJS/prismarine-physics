@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "jest --verbose",
+    "test": "mocha --reporter spec --exit",
     "pretest": "npm run lint",
     "lint": "standard",
     "fix": "standard --fix"
@@ -28,10 +28,11 @@
   },
   "homepage": "https://github.com/PrismarineJS/prismarine-physics#readme",
   "devDependencies": {
-    "jest": "^27.0.4",
+    "expect": "^27.3.1",
+    "mocha": "^9.1.3",
     "prismarine-block": "^1.7.3",
-    "standard": "^16.0.3",
-    "prismarine-physics": "file:./"
+    "prismarine-physics": "file:./",
+    "standard": "^16.0.3"
   },
   "dependencies": {
     "minecraft-data": "^2.73.1",
