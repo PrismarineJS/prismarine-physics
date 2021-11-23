@@ -43,10 +43,10 @@ function Physics (mcData, world) {
   const physics = {
     gravity: 0.08, // blocks/tick^2 https://minecraft.gamepedia.com/Entity#Motion_of_entities
     airdrag: Math.fround(1 - 0.02), // actually (1 - drag)
-    friction: 0.1627714,
+    friction: Math.fround(0.216),
     yawSpeed: 3.0,
     pitchSpeed: 3.0,
-    playerSpeed: 0.1,
+    playerSpeed: Math.fround(0.1),
     sneakSpeed: 0.3,
     stepHeight: 0.6, // how much height can the bot step on without jump
     negligeableVelocity: 0.003, // actually 0.005 for 1.8, but seems fine
@@ -60,9 +60,9 @@ function Physics (mcData, world) {
     waterInertia: 0.8,
     lavaInertia: 0.5,
     liquidAcceleration: 0.02,
-    airborneInertia: 0.91,
-    airborneAcceleration: 0.02,
-    defaultSlipperiness: 0.6,
+    airborneInertia: Math.fround(0.91),
+    airborneAcceleration: Math.fround(0.02),
+    defaultSlipperiness: Math.fround(0.6),
     outOfLiquidImpulse: 0.3,
     autojumpCooldown: 10, // ticks (0.5s)
     bubbleColumnSurfaceDrag: {
@@ -340,7 +340,7 @@ function Physics (mcData, world) {
 
   function applyHeading (entity, strafe, forward, multiplier) {
     let speed = Math.sqrt(strafe * strafe + forward * forward)
-    if (speed < 0.01) return new Vec3(0, 0, 0)
+    if (speed < 0.001) return new Vec3(0, 0, 0)
 
     speed = multiplier / Math.max(speed, 1)
 
@@ -376,19 +376,20 @@ function Physics (mcData, world) {
       // Normal movement
       let acceleration = physics.airborneAcceleration
       let inertia = physics.airborneInertia
-      let playerAttributes
-      if (entity.attributes && entity.attributes[physics.movementSpeedAttribute]) {
-        playerAttributes = entity.attributes[physics.movementSpeedAttribute]
-      } else {
-        playerAttributes = util.createAttributeValue(physics.playerSpeed) // sprinting
-      }
-      const attributeSpeed = util.getAttributeValue(playerAttributes)
       const blockUnder = world.getBlock(pos.offset(0, -1, 0))
       if (entity.onGround && blockUnder) {
-        inertia = (blockSlipperiness[blockUnder.type] || physics.defaultSlipperiness) * 0.91
+        let playerAttributes
+        if (entity.attributes && entity.attributes[physics.movementSpeedAttribute]) {
+          playerAttributes = entity.attributes[physics.movementSpeedAttribute]
+        } else {
+          playerAttributes = util.createAttributeValue(physics.playerSpeed) // default attribute
+        }
+        const attributeSpeed = util.getAttributeValue(playerAttributes)
+        inertia = (blockSlipperiness[blockUnder.type] || physics.defaultSlipperiness)
         acceleration = attributeSpeed * (physics.friction / (inertia * inertia * inertia)) // net.minecraft.world.entity.LivingEntity in getFrictionInfluencedSpeed
+        inertia *= physics.airborneInertia
+        if (acceleration < 0) acceleration = 0
       }
-
       applyHeading(entity, strafe, forward, acceleration)
 
       if (isOnLadder(world, pos)) {
