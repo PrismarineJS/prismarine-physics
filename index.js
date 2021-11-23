@@ -388,11 +388,7 @@ function Physics (mcData, world) {
         inertia = (blockSlipperiness[blockUnder.type] || physics.defaultSlipperiness) * 0.91
         acceleration = attributeSpeed * (physics.friction / (inertia * inertia * inertia)) // net.minecraft.world.entity.LivingEntity in getFrictionInfluencedSpeed
       }
-      /*
-      console.log(playerAttributes)
-      console.log(attributeSpeed)
-      console.log(acceleration)
-      */
+
       applyHeading(entity, strafe, forward, acceleration)
 
       if (isOnLadder(world, pos)) {
