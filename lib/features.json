@@ -28,5 +28,10 @@
     "name": "effectNamesAreRegistryNames",
     "description": "Status effect names equal to their registry names",
     "versions": ["1.17"]
+  },
+  {
+    "name": "attributesArePrefixed",
+    "description": "attributes are prefixed with minecraft:",
+    "versions": ["1.16", "1.17"]
   }
 ]

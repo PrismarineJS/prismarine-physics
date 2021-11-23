@@ -1,6 +1,6 @@
 const Vec3 = require('vec3').Vec3
 const AABB = require('./lib/aabb')
-const math = require('./lib/math')
+const util = require('./lib/util') // Math and Attributes
 const features = require('./lib/features')
 
 function makeSupportFeature (mcData) {
@@ -43,9 +43,10 @@ function Physics (mcData, world) {
   const physics = {
     gravity: 0.08, // blocks/tick^2 https://minecraft.gamepedia.com/Entity#Motion_of_entities
     airdrag: Math.fround(1 - 0.02), // actually (1 - drag)
+    friction: 0.1627714,
     yawSpeed: 3.0,
     pitchSpeed: 3.0,
-    sprintSpeed: 1.3,
+    playerSpeed: 0.1,
     sneakSpeed: 0.3,
     stepHeight: 0.6, // how much height can the bot step on without jump
     negligeableVelocity: 0.003, // actually 0.005 for 1.8, but seems fine
@@ -77,8 +78,7 @@ function Physics (mcData, world) {
       maxUp: 0.7
     },
     slowFalling: 0.125,
-    speedEffect: 1.2,
-    slowEffect: 0.85
+    movementSpeedAttribute: supportFeature('attributesArePrefixed') ? 'minecraft:generic.movement_speed' : 'generic.movementSpeed'
   }
 
   if (supportFeature('independentLiquidGravity')) {
@@ -376,20 +376,28 @@ function Physics (mcData, world) {
       // Normal movement
       let acceleration = physics.airborneAcceleration
       let inertia = physics.airborneInertia
+      let playerAttributes
+      if (entity.attributes && entity.attributes[physics.movementSpeedAttribute]) {
+        playerAttributes = entity.attributes[physics.movementSpeedAttribute]
+      } else {
+        playerAttributes = util.createAttributeValue(physics.playerSpeed) // sprinting
+      }
+      const attributeSpeed = util.getAttributeValue(playerAttributes)
       const blockUnder = world.getBlock(pos.offset(0, -1, 0))
       if (entity.onGround && blockUnder) {
         inertia = (blockSlipperiness[blockUnder.type] || physics.defaultSlipperiness) * 0.91
-        acceleration = 0.1 * (0.1627714 / (inertia * inertia * inertia))
+        acceleration = attributeSpeed * (physics.friction / (inertia * inertia * inertia)) // net.minecraft.world.entity.LivingEntity in getFrictionInfluencedSpeed
       }
-      if (entity.control.sprint) acceleration *= physics.sprintSpeed
-      if (entity.speed > 0) acceleration *= physics.speedEffect * entity.speed
-      if (entity.slowness > 0) acceleration *= physics.slowEffect * entity.slowness
-
+      /*
+      console.log(playerAttributes)
+      console.log(attributeSpeed)
+      console.log(acceleration)
+      */
       applyHeading(entity, strafe, forward, acceleration)
 
       if (isOnLadder(world, pos)) {
-        vel.x = math.clamp(-physics.ladderMaxSpeed, vel.x, physics.ladderMaxSpeed)
-        vel.z = math.clamp(-physics.ladderMaxSpeed, vel.z, physics.ladderMaxSpeed)
+        vel.x = util.clamp(-physics.ladderMaxSpeed, vel.x, physics.ladderMaxSpeed)
+        vel.z = util.clamp(-physics.ladderMaxSpeed, vel.z, physics.ladderMaxSpeed)
         vel.y = Math.max(vel.y, entity.control.sneak ? 0 : -physics.ladderMaxSpeed)
       }
 
@@ -663,6 +671,7 @@ class PlayerState {
     this.jumpQueued = bot.jumpQueued
 
     // Input only (not modified)
+    this.attributes = bot.entity.attributes
     this.yaw = bot.entity.yaw
     this.control = control
 
