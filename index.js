@@ -47,6 +47,7 @@ function Physics (mcData, world) {
     yawSpeed: 3.0,
     pitchSpeed: 3.0,
     playerSpeed: Math.fround(0.1),
+    sprintSpeed: Math.fround(0.3),
     sneakSpeed: 0.3,
     stepHeight: 0.6, // how much height can the bot step on without jump
     negligeableVelocity: 0.003, // actually 0.005 for 1.8, but seems fine
@@ -383,6 +384,16 @@ function Physics (mcData, world) {
           playerAttributes = entity.attributes[physics.movementSpeedAttribute]
         } else {
           playerAttributes = util.createAttributeValue(physics.playerSpeed) // default attribute
+        }
+        // Client-side sprinting (don't rely on server-side sprinting)
+        if (entity.control.sprint) {
+          if (!util.checkAttributeModifier(playerAttributes, '662a6b8d-da3e-4c1c-8813-96ea6097278d')) {
+            playerAttributes = util.addAttributeModifier(playerAttributes, {
+              uuid: '662a6b8d-da3e-4c1c-8813-96ea6097278d',
+              amount: physics.sprintSpeed,
+              operation: 2
+            })
+          }
         }
         const attributeSpeed = util.getAttributeValue(playerAttributes)
         inertia = (blockSlipperiness[blockUnder.type] || physics.defaultSlipperiness)
