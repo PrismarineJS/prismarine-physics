@@ -386,6 +386,7 @@ function Physics (mcData, world) {
           playerAttributes = util.createAttributeValue(physics.playerSpeed) // default attribute
         }
         // Client-side sprinting (don't rely on server-side sprinting)
+        playerAttributes = util.deleteAttributeModifier(playerAttributes, '662a6b8d-da3e-4c1c-8813-96ea6097278d') // always delete sprinting (if it exists)
         if (entity.control.sprint) {
           if (!util.checkAttributeModifier(playerAttributes, '662a6b8d-da3e-4c1c-8813-96ea6097278d')) {
             playerAttributes = util.addAttributeModifier(playerAttributes, {
