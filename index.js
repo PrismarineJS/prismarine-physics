@@ -41,7 +41,8 @@ const physics = {
   },
   slowFalling: 0.125,
   speedEffect: 1.2,
-  slowEffect: 0.85
+  slowEffect: 0.85,
+  canEntityCollide: true
 }
 
 function getPlayerBB (pos) {
@@ -726,7 +727,7 @@ class PlayerState {
     this.yaw = bot.entity.yaw
     this.control = control
     // Hardcoded AABB because can't access getPlayerBB()
-    this.intersectingEntities = supportFeature('entityCollision') ? getIntersectingEntities(getPlayerBB(this.pos), Object.values(bot.entities ?? {}).filter((e) => e.id !== bot.entity.id)) : []
+    this.intersectingEntities = supportFeature('entityCollision') && physics.canEntityCollide ? getIntersectingEntities(getPlayerBB(this.pos), Object.values(bot.entities ?? {}).filter((e) => e.id !== bot.entity.id)) : []
 
     // effects
     const effects = bot.entity.effects
