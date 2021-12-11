@@ -3,6 +3,52 @@ const AABB = require('./lib/aabb')
 const math = require('./lib/math')
 const features = require('./lib/features')
 
+const physics = {
+  gravity: 0.08, // blocks/tick^2 https://minecraft.gamepedia.com/Entity#Motion_of_entities
+  airdrag: Math.fround(1 - 0.02), // actually (1 - drag)
+  yawSpeed: 3.0,
+  pitchSpeed: 3.0,
+  sprintSpeed: 1.3,
+  sneakSpeed: 0.3,
+  stepHeight: 0.6, // how much height can the bot step on without jump
+  negligeableVelocity: 0.003, // actually 0.005 for 1.8, but seems fine
+  soulsandSpeed: 0.4,
+  honeyblockSpeed: 0.4,
+  honeyblockJumpSpeed: 0.4,
+  ladderMaxSpeed: 0.15,
+  ladderClimbSpeed: 0.2,
+  playerHalfWidth: 0.3,
+  playerHeight: 1.8,
+  waterInertia: 0.8,
+  lavaInertia: 0.5,
+  liquidAcceleration: 0.02,
+  airborneInertia: 0.91,
+  airborneAcceleration: 0.02,
+  defaultSlipperiness: 0.6,
+  outOfLiquidImpulse: 0.3,
+  autojumpCooldown: 10, // ticks (0.5s)
+  bubbleColumnSurfaceDrag: {
+    down: 0.03,
+    maxDown: -0.9,
+    up: 0.1,
+    maxUp: 1.8
+  },
+  bubbleColumnDrag: {
+    down: 0.03,
+    maxDown: -0.3,
+    up: 0.06,
+    maxUp: 0.7
+  },
+  slowFalling: 0.125,
+  speedEffect: 1.2,
+  slowEffect: 0.85
+}
+
+function getPlayerBB (pos) {
+  const w = physics.playerHalfWidth
+  return new AABB(-w, 0, -w, w, physics.playerHeight, w).offset(pos.x, pos.y, pos.z)
+}
+
 function makeSupportFeature (mcData) {
   return feature => features.some(({ name, versions }) => name === feature && versions.includes(mcData.version.majorVersion))
 }
@@ -40,58 +86,12 @@ function Physics (mcData, world) {
   const bubblecolumnId = blocksByName.bubble_column ? blocksByName.bubble_column.id : -1 // 1.13+
   if (blocksByName.bubble_column) waterLike.add(bubblecolumnId)
 
-  const physics = {
-    gravity: 0.08, // blocks/tick^2 https://minecraft.gamepedia.com/Entity#Motion_of_entities
-    airdrag: Math.fround(1 - 0.02), // actually (1 - drag)
-    yawSpeed: 3.0,
-    pitchSpeed: 3.0,
-    sprintSpeed: 1.3,
-    sneakSpeed: 0.3,
-    stepHeight: 0.6, // how much height can the bot step on without jump
-    negligeableVelocity: 0.003, // actually 0.005 for 1.8, but seems fine
-    soulsandSpeed: 0.4,
-    honeyblockSpeed: 0.4,
-    honeyblockJumpSpeed: 0.4,
-    ladderMaxSpeed: 0.15,
-    ladderClimbSpeed: 0.2,
-    playerHalfWidth: 0.3,
-    playerHeight: 1.8,
-    waterInertia: 0.8,
-    lavaInertia: 0.5,
-    liquidAcceleration: 0.02,
-    airborneInertia: 0.91,
-    airborneAcceleration: 0.02,
-    defaultSlipperiness: 0.6,
-    outOfLiquidImpulse: 0.3,
-    autojumpCooldown: 10, // ticks (0.5s)
-    bubbleColumnSurfaceDrag: {
-      down: 0.03,
-      maxDown: -0.9,
-      up: 0.1,
-      maxUp: 1.8
-    },
-    bubbleColumnDrag: {
-      down: 0.03,
-      maxDown: -0.3,
-      up: 0.06,
-      maxUp: 0.7
-    },
-    slowFalling: 0.125,
-    speedEffect: 1.2,
-    slowEffect: 0.85
-  }
-
   if (supportFeature('independentLiquidGravity')) {
     physics.waterGravity = 0.02
     physics.lavaGravity = 0.02
   } else if (supportFeature('proportionalLiquidGravity')) {
     physics.waterGravity = physics.gravity / 16
     physics.lavaGravity = physics.gravity / 4
-  }
-
-  function getPlayerBB (pos) {
-    const w = physics.playerHalfWidth
-    return new AABB(-w, 0, -w, w, physics.playerHeight, w).offset(pos.x, pos.y, pos.z)
   }
 
   function setPositionToBB (bb, pos) {
@@ -726,7 +726,7 @@ class PlayerState {
     this.yaw = bot.entity.yaw
     this.control = control
     // Hardcoded AABB because can't access getPlayerBB()
-    this.intersectingEntities = supportFeature('entityCollision') ? getIntersectingEntities(new AABB(-0.3, 0, -0.3, 0.3, 1.8, 0.3).offset(this.pos.x, this.pos.y, this.pos.z), Object.values(bot.entities ?? {}).filter((e) => e.id !== bot.entity.id)) : []
+    this.intersectingEntities = supportFeature('entityCollision') ? getIntersectingEntities(getPlayerBB(this.pos), Object.values(bot.entities ?? {}).filter((e) => e.id !== bot.entity.id)) : []
 
     // effects
     const effects = bot.entity.effects
