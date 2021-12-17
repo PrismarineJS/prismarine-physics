@@ -693,7 +693,7 @@ function getIntersectingEntities (bb, entityList) {
 
   for (let i = 0; i < entityList.length; i++) {
     const e = entityList[i]
-    if (e.type !== 'object') {
+    if (!e.noClip && (e.type !== 'object' && e.type !== 'orb')) { // temp until I can set noclip flag in places
       const entityBB = getEntityBB(e)
       if (bb.intersects(entityBB)) {
         entities.push(e)
