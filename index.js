@@ -1,6 +1,6 @@
 const Vec3 = require('vec3').Vec3
 const AABB = require('./lib/aabb')
-const util = require('./lib/util') // Math and Attributes
+const math = require('./lib/math')
 const features = require('./lib/features')
 const attribute = require('./lib/attribute')
 
@@ -44,7 +44,6 @@ function Physics (mcData, world) {
   const physics = {
     gravity: 0.08, // blocks/tick^2 https://minecraft.gamepedia.com/Entity#Motion_of_entities
     airdrag: Math.fround(1 - 0.02), // actually (1 - drag)
-    friction: Math.fround(0.216),
     yawSpeed: 3.0,
     pitchSpeed: 3.0,
     playerSpeed: 0.1,
@@ -62,9 +61,9 @@ function Physics (mcData, world) {
     waterInertia: 0.8,
     lavaInertia: 0.5,
     liquidAcceleration: 0.02,
-    airborneInertia: Math.fround(0.91),
-    airborneAcceleration: Math.fround(0.02),
-    defaultSlipperiness: Math.fround(0.6),
+    airborneInertia: 0.91,
+    airborneAcceleration: 0.02,
+    defaultSlipperiness: 0.6,
     outOfLiquidImpulse: 0.3,
     autojumpCooldown: 10, // ticks (0.5s)
     bubbleColumnSurfaceDrag: {
@@ -342,7 +341,7 @@ function Physics (mcData, world) {
 
   function applyHeading (entity, strafe, forward, multiplier) {
     let speed = Math.sqrt(strafe * strafe + forward * forward)
-    if (speed < 0.001) return new Vec3(0, 0, 0)
+    if (speed < 0.01) return new Vec3(0, 0, 0)
 
     speed = multiplier / Math.max(speed, 1)
 
@@ -406,8 +405,8 @@ function Physics (mcData, world) {
       applyHeading(entity, strafe, forward, acceleration)
 
       if (isOnLadder(world, pos)) {
-        vel.x = util.clamp(-physics.ladderMaxSpeed, vel.x, physics.ladderMaxSpeed)
-        vel.z = util.clamp(-physics.ladderMaxSpeed, vel.z, physics.ladderMaxSpeed)
+        vel.x = math.clamp(-physics.ladderMaxSpeed, vel.x, physics.ladderMaxSpeed)
+        vel.z = math.clamp(-physics.ladderMaxSpeed, vel.z, physics.ladderMaxSpeed)
         vel.y = Math.max(vel.y, entity.control.sneak ? 0 : -physics.ladderMaxSpeed)
       }
 
