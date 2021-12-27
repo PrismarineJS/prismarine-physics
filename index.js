@@ -380,7 +380,6 @@ function Physics (mcData, world) {
       const blockUnder = world.getBlock(pos.offset(0, -1, 0))
       if (entity.onGround && blockUnder) {
         let playerAttributes
-        console.log(physics.movementSpeedAttribute)
         if (entity.attributes && entity.attributes[physics.movementSpeedAttribute]) {
           playerAttributes = entity.attributes[physics.movementSpeedAttribute]
         } else {
