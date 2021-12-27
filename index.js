@@ -79,7 +79,7 @@ function Physics (mcData, world) {
       maxUp: 0.7
     },
     slowFalling: 0.125,
-    movementSpeedAttribute: supportFeature('attributesArePrefixed') ? 'minecraft:generic.movement_speed' : 'generic.movementSpeed'
+    movementSpeedAttribute: mcData.attributesByName.movementSpeed.resource
   }
 
   if (supportFeature('independentLiquidGravity')) {
@@ -380,6 +380,7 @@ function Physics (mcData, world) {
       const blockUnder = world.getBlock(pos.offset(0, -1, 0))
       if (entity.onGround && blockUnder) {
         let playerAttributes
+        console.log(physics.movementSpeedAttribute)
         if (entity.attributes && entity.attributes[physics.movementSpeedAttribute]) {
           playerAttributes = entity.attributes[physics.movementSpeedAttribute]
         } else {
