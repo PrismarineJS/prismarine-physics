@@ -79,7 +79,8 @@ function Physics (mcData, world) {
       maxUp: 0.7
     },
     slowFalling: 0.125,
-    movementSpeedAttribute: mcData.attributesByName.movementSpeed.resource
+    movementSpeedAttribute: mcData.attributesByName.movementSpeed.resource,
+    sprintingUUID: '662a6b8d-da3e-4c1c-8813-96ea6097278d' // SPEED_MODIFIER_SPRINTING_UUID is from LivingEntity.java
   }
 
   if (supportFeature('independentLiquidGravity')) {
@@ -379,27 +380,31 @@ function Physics (mcData, world) {
       let inertia = physics.airborneInertia
       const blockUnder = world.getBlock(pos.offset(0, -1, 0))
       if (entity.onGround && blockUnder) {
-        let playerAttributes
+        let playerSpeedAttribute
         if (entity.attributes && entity.attributes[physics.movementSpeedAttribute]) {
-          playerAttributes = entity.attributes[physics.movementSpeedAttribute]
+          // Use server-side player attributes
+          playerSpeedAttribute = entity.attributes[physics.movementSpeedAttribute]
         } else {
-          playerAttributes = attribute.createAttributeValue(physics.playerSpeed) // default attribute
+          // Create an attribute if the player does not have it
+          playerSpeedAttribute = attribute.createAttributeValue(physics.playerSpeed)
         }
         // Client-side sprinting (don't rely on server-side sprinting)
-        playerAttributes = attribute.deleteAttributeModifier(playerAttributes, '662a6b8d-da3e-4c1c-8813-96ea6097278d') // always delete sprinting (if it exists)
+        // setSprinting in LivingEntity.java
+        playerSpeedAttribute = attribute.deleteAttributeModifier(playerSpeedAttribute, physics.sprintingUUID) // always delete sprinting (if it exists)
         if (entity.control.sprint) {
-          if (!attribute.checkAttributeModifier(playerAttributes, '662a6b8d-da3e-4c1c-8813-96ea6097278d')) {
-            playerAttributes = attribute.addAttributeModifier(playerAttributes, {
-              uuid: '662a6b8d-da3e-4c1c-8813-96ea6097278d',
+          if (!attribute.checkAttributeModifier(playerSpeedAttribute, physics.sprintingUUID)) {
+            playerSpeedAttribute = attribute.addAttributeModifier(playerSpeedAttribute, {
+              uuid: physics.sprintingUUID,
               amount: physics.sprintSpeed,
               operation: 2
             })
           }
         }
-        const attributeSpeed = attribute.getAttributeValue(playerAttributes)
+        // Calculate what the speed is (0.1 if no modification)
+        const attributeSpeed = attribute.getAttributeValue(playerSpeedAttribute)
         inertia = (blockSlipperiness[blockUnder.type] || physics.defaultSlipperiness) * 0.91
         acceleration = attributeSpeed * (0.1627714 / (inertia * inertia * inertia))
-        if (acceleration < 0) acceleration = 0
+        if (acceleration < 0) acceleration = 0 // acceleration should not be negative
       }
 
       applyHeading(entity, strafe, forward, acceleration)
