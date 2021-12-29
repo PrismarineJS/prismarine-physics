@@ -41,8 +41,8 @@ const physics = {
     maxUp: 0.7
   },
   slowFalling: 0.125,
-  movementSpeedAttribute: mcData.attributesByName.movementSpeed.resource,
-  sprintingUUID: '662a6b8d-da3e-4c1c-8813-96ea6097278d' // SPEED_MODIFIER_SPRINTING_UUID is from LivingEntity.java
+  movementSpeedAttribute: 0.1, // Setting dummy speed here because usb's code needs mcdata
+  sprintingUUID: '662a6b8d-da3e-4c1c-8813-96ea6097278d', // SPEED_MODIFIER_SPRINTING_UUID is from LivingEntity.java
   canEntityCollide: true
 }
 
@@ -87,6 +87,8 @@ function Physics (mcData, world) {
   if (blocksByName.kelp) waterLike.add(blocksByName.kelp.id) // 1.13+
   const bubblecolumnId = blocksByName.bubble_column ? blocksByName.bubble_column.id : -1 // 1.13+
   if (blocksByName.bubble_column) waterLike.add(bubblecolumnId)
+
+  physics.movementSpeedAttribute = mcData.attributesByName.movementSpeed.resource
 
   if (supportFeature('independentLiquidGravity')) {
     physics.waterGravity = 0.02
