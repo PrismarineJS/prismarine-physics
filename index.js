@@ -49,6 +49,7 @@ function Physics (mcData, world) {
     playerSpeed: 0.1,
     sprintSpeed: 0.3,
     sneakSpeed: 0.3,
+    useItemSpeed: 0.3,
     stepHeight: 0.6, // how much height can the bot step on without jump
     negligeableVelocity: 0.003, // actually 0.005 for 1.8, but seems fine
     soulsandSpeed: 0.4,
@@ -606,6 +607,11 @@ function Physics (mcData, world) {
       forward *= physics.sneakSpeed
     }
 
+    if (entity.isUsingItem) {
+      strafe *= physics.useItemSpeed
+      forward *= physics.useItemSpeed
+    }
+
     moveEntityWithHeading(entity, world, strafe, forward)
 
     return entity
@@ -679,6 +685,7 @@ class PlayerState {
     this.isInWater = bot.entity.isInWater
     this.isInLava = bot.entity.isInLava
     this.isInWeb = bot.entity.isInWeb
+    this.isUsingItem = bot.usingHeldItem
     this.isCollidedHorizontally = bot.entity.isCollidedHorizontally
     this.isCollidedVertically = bot.entity.isCollidedVertically
     this.jumpTicks = bot.jumpTicks
@@ -719,6 +726,7 @@ class PlayerState {
     bot.entity.isInWater = this.isInWater
     bot.entity.isInLava = this.isInLava
     bot.entity.isInWeb = this.isInWeb
+    bot.entity.isUsingItem = this.isUsingItem
     bot.entity.isCollidedHorizontally = this.isCollidedHorizontally
     bot.entity.isCollidedVertically = this.isCollidedVertically
     bot.jumpTicks = this.jumpTicks
