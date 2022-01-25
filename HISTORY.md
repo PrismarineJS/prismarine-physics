@@ -1,5 +1,10 @@
 ## History
 
+### 1.4.0
+
+* add movementSpeed attribute support
+* support 1.18
+
 ### 1.3.1
 
 * Add pitch speed
