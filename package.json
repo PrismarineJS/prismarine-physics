@@ -32,7 +32,7 @@
     "mocha": "^10.0.0",
     "prismarine-block": "^1.7.3",
     "prismarine-physics": "file:./",
-    "standard": "^16.0.3"
+    "standard": "^17.0.0"
   },
   "dependencies": {
     "minecraft-data": "^3.0.0",
