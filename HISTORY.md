@@ -1,5 +1,9 @@
 ## History
 
+### 1.5.2
+
+* Fix publish.yml
+
 ### 1.5.1
 
 * fix deleteAttributeModifier function (@bendgk)
