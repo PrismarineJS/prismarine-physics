@@ -1,5 +1,9 @@
 ## History
 
+### 1.5.1
+
+* fix deleteAttributeModifier function (@bendgk)
+
 ### 1.5.0
 
 * bump mcdata
