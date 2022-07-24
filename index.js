@@ -354,8 +354,8 @@ function Physics (mcData, world) {
     const cos = Math.cos(yaw)
 
     const vel = entity.vel
-    vel.x += strafe * cos - forward * sin
-    vel.z += forward * cos + strafe * sin
+    vel.x -= strafe * cos + forward * sin
+    vel.z += forward * cos - strafe * sin
   }
 
   function isOnLadder (world, pos) {
