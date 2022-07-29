@@ -376,8 +376,8 @@ function Physics (mcData, world) {
 
     if (!entity.isInWater && !entity.isInLava) {
       // Normal movement
-      let acceleration = physics.airborneAcceleration
-      let inertia = physics.airborneInertia
+      let acceleration = 0.0
+      let inertia = 0.0
       const blockUnder = world.getBlock(pos.offset(0, -1, 0))
       if (entity.onGround && blockUnder) {
         let playerSpeedAttribute
@@ -405,6 +405,14 @@ function Physics (mcData, world) {
         inertia = (blockSlipperiness[blockUnder.type] || physics.defaultSlipperiness) * 0.91
         acceleration = attributeSpeed * (0.1627714 / (inertia * inertia * inertia))
         if (acceleration < 0) acceleration = 0 // acceleration should not be negative
+      } else {
+        acceleration = physics.airborneAcceleration
+        inertia = physics.airborneInertia
+
+        if (entity.control.sprint) {
+          const airSprintFactor = physics.airborneAcceleration * 0.3
+          acceleration += airSprintFactor
+        }
       }
 
       applyHeading(entity, strafe, forward, acceleration)
