@@ -13,7 +13,7 @@ const fakeWorld = {
   }
 }
 
-function fakePlayer (pos) {
+function fakePlayer (pos, baseVersion) {
   return {
     entity: {
       position: pos,
@@ -24,10 +24,15 @@ function fakePlayer (pos) {
       isInWeb: false,
       isCollidedHorizontally: false,
       isCollidedVertically: false,
-      yaw: 0
+      yaw: 0,
+      effects: []
+    },
+    inventory: {
+      slots: []
     },
     jumpTicks: 0,
-    jumpQueued: false
+    jumpQueued: false,
+    version: baseVersion
   }
 }
 
@@ -41,7 +46,7 @@ const controls = {
   sprint: false,
   sneak: false
 }
-const player = fakePlayer(new Vec3(0, 80, 0))
+const player = fakePlayer(new Vec3(0, 80, 0), mcData.version.version)
 const playerState = new PlayerState(player, controls)
 
 while (!player.entity.onGround) {
