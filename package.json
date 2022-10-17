@@ -28,7 +28,7 @@
   },
   "homepage": "https://github.com/PrismarineJS/prismarine-physics#readme",
   "devDependencies": {
-    "expect": "^27.3.1",
+    "expect": "^29.2.0",
     "mocha": "^10.0.0",
     "prismarine-block": "^1.7.3",
     "prismarine-physics": "file:./",
