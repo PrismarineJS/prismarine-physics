@@ -89,6 +89,8 @@ function Physics (mcData, world) {
   } else if (supportFeature('proportionalLiquidGravity')) {
     physics.waterGravity = physics.gravity / 16
     physics.lavaGravity = physics.gravity / 4
+  } else {
+    throw new Error('No liquid gravity settings, have you made sure the liquid gravity features are up to date?')
   }
 
   function getPlayerBB (pos) {
