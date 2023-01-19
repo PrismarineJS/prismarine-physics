@@ -1,5 +1,10 @@
 ## History
 
+### 1.6.0
+
+* Fix left and right (@Kashalls)
+* Fix 1.19 Water Physics (@ATXLtheAxolotl)
+
 ### 1.5.2
 
 * Fix publish.yml
