@@ -689,6 +689,7 @@ class PlayerState {
     // Input only (not modified)
     this.attributes = bot.entity.attributes
     this.yaw = bot.entity.yaw
+    this.pitch = bot.entity.pitch
     this.control = control
 
     // effects
