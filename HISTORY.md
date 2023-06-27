@@ -1,5 +1,10 @@
 ## History
 
+### 1.7.0
+
+* 1.20
+* add pitch
+
 ### 1.6.0
 
 * Fix left and right (@Kashalls)
