@@ -81,6 +81,7 @@ Read / Write properties:
 
 Read only properties:
 - yaw : (float) the yaw angle, in radians, of the player entity
+- pitch: (float) the pitch angle, in radians, of the player entity
 - control : (object) control states vector with properties:
   - forward
   - back
