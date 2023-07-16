@@ -23,10 +23,5 @@
     "name": "climbUsingJump",
     "description": "Entity can climb ladders and vines by pressing jump",
     "versions": ["1.14", "1.15", "1.17", "1.18"]
-  },
-  {
-    "name": "effectNamesAreRegistryNames",
-    "description": "Status effect names equal to their registry names",
-    "versions": ["1.17", "1.18"]
   }
 ]
