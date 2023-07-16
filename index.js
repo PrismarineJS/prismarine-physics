@@ -646,28 +646,6 @@ function getEnchantmentLevel (mcData, enchantmentName, enchantments) {
   return 0
 }
 
-function getStatusEffectNamesForVersion (supportFeature) {
-  if (supportFeature('effectNamesAreRegistryNames')) {
-    return {
-      jumpBoostEffectName: 'jump_boost',
-      speedEffectName: 'speed',
-      slownessEffectName: 'slowness',
-      dolphinsGraceEffectName: 'dolphins_grace',
-      slowFallingEffectName: 'slow_falling',
-      levitationEffectName: 'levitation'
-    }
-  } else {
-    return {
-      jumpBoostEffectName: 'JumpBoost',
-      speedEffectName: 'Speed',
-      slownessEffectName: 'Slowness',
-      dolphinsGraceEffectName: 'DolphinsGrace',
-      slowFallingEffectName: 'SlowFalling',
-      levitationEffectName: 'Levitation'
-    }
-  }
-}
-
 class PlayerState {
   constructor (bot, control) {
     const mcData = require('minecraft-data')(bot.version)
@@ -694,15 +672,14 @@ class PlayerState {
 
     // effects
     const effects = bot.entity.effects
-    const statusEffectNames = getStatusEffectNamesForVersion(supportFeature)
 
-    this.jumpBoost = getEffectLevel(mcData, statusEffectNames.jumpBoostEffectName, effects)
-    this.speed = getEffectLevel(mcData, statusEffectNames.speedEffectName, effects)
-    this.slowness = getEffectLevel(mcData, statusEffectNames.slownessEffectName, effects)
+    this.jumpBoost = getEffectLevel(mcData, 'JumpBoost', effects)
+    this.speed = getEffectLevel(mcData, 'Speed', effects)
+    this.slowness = getEffectLevel(mcData, 'Slowness', effects)
 
-    this.dolphinsGrace = getEffectLevel(mcData, statusEffectNames.dolphinsGraceEffectName, effects)
-    this.slowFalling = getEffectLevel(mcData, statusEffectNames.slowFallingEffectName, effects)
-    this.levitation = getEffectLevel(mcData, statusEffectNames.levitationEffectName, effects)
+    this.dolphinsGrace = getEffectLevel(mcData, 'DolphinsGrace', effects)
+    this.slowFalling = getEffectLevel(mcData, 'SlowFalling', effects)
+    this.levitation = getEffectLevel(mcData, 'Levitation', effects)
 
     // armour enchantments
     const boots = bot.inventory.slots[8]
