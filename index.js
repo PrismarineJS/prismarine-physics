@@ -650,7 +650,6 @@ class PlayerState {
   constructor (bot, control) {
     const mcData = require('minecraft-data')(bot.version)
     const nbt = require('prismarine-nbt')
-    const supportFeature = makeSupportFeature(mcData)
 
     // Input / Outputs
     this.pos = bot.entity.position.clone()
