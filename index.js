@@ -38,6 +38,7 @@ function Physics (mcData, world) {
   if (blocksByName.seagrass) waterLike.add(blocksByName.seagrass.id) // 1.13+
   if (blocksByName.tall_seagrass) waterLike.add(blocksByName.tall_seagrass.id) // 1.13+
   if (blocksByName.kelp) waterLike.add(blocksByName.kelp.id) // 1.13+
+  if (blocksByName.kelp_plant) waterLike.add(blocksByName.kelp_plant.id) // 1.13+
   const bubblecolumnId = blocksByName.bubble_column ? blocksByName.bubble_column.id : -1 // 1.13+
   if (blocksByName.bubble_column) waterLike.add(bubblecolumnId)
 
