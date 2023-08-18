@@ -31,7 +31,7 @@ function Physics (mcData, world) {
   const honeyblockId = blocksByName.honey_block ? blocksByName.honey_block.id : -1 // 1.15+
   const webId = blocksByName.cobweb ? blocksByName.cobweb.id : blocksByName.web.id
   const waterId = blocksByName.water.id
-  const lavaId = blocksByName.lava.id
+  const lavaIds = [blocksByName.lava.id, blocksByName.flowing_lava ? blocksByName.flowing_lava.id : -1]
   const ladderId = blocksByName.ladder.id
   const vineId = blocksByName.vine.id
   const waterLike = new Set()
@@ -41,6 +41,7 @@ function Physics (mcData, world) {
   if (blocksByName.kelp_plant) waterLike.add(blocksByName.kelp_plant.id) // 1.13+
   const bubblecolumnId = blocksByName.bubble_column ? blocksByName.bubble_column.id : -1 // 1.13+
   if (blocksByName.bubble_column) waterLike.add(bubblecolumnId)
+  if (blocksByName.flowing_water) waterLike.add(blocksByName.flowing_water.id) // Bedrock
 
   const physics = {
     gravity: 0.08, // blocks/tick^2 https://minecraft.gamepedia.com/Entity#Motion_of_entities
@@ -475,13 +476,17 @@ function Physics (mcData, world) {
     }
   }
 
-  function isMaterialInBB (world, queryBB, type) {
+  function isMaterialInBB (world, queryBB, ...type) {
     const cursor = new Vec3(0, 0, 0)
     for (cursor.y = Math.floor(queryBB.minY); cursor.y <= Math.floor(queryBB.maxY); cursor.y++) {
       for (cursor.z = Math.floor(queryBB.minZ); cursor.z <= Math.floor(queryBB.maxZ); cursor.z++) {
         for (cursor.x = Math.floor(queryBB.minX); cursor.x <= Math.floor(queryBB.maxX); cursor.x++) {
           const block = world.getBlock(cursor)
-          if (block && block.type === type) return true
+          if (block) {
+            for (const blockType of type) {
+              if (block.type === blockType) return true
+            }
+          }
         }
       }
     }
@@ -579,7 +584,7 @@ function Physics (mcData, world) {
     const lavaBB = getPlayerBB(pos).contract(0.1, 0.4, 0.1)
 
     entity.isInWater = isInWaterApplyCurrent(world, waterBB, vel)
-    entity.isInLava = isMaterialInBB(world, lavaBB, lavaId)
+    entity.isInLava = isMaterialInBB(world, lavaBB, lavaIds)
 
     // Reset velocity component if it falls under the threshold
     if (Math.abs(vel.x) < physics.negligeableVelocity) vel.x = 0
