@@ -343,6 +343,64 @@ function Physics (mcData, world) {
     }
   }
 
+  function getLookingVector (entity) {
+    // given a yaw pitch, we need the looking vector
+
+    // yaw is right handed rotation about y (up) starting from -z (north)
+    // pitch is -90 looking down, 90 looking up, 0 looking at horizon
+    // lets get its coordinate system.
+    // let x' = -z (north)
+    // let y' = -x (west)
+    // let z' = y (up)
+
+    // the non normalized looking vector in x', y', z' space is
+    // x' is sin(yaw)
+    // y' is cos(yaw)
+    // z' is tan(pitch)
+
+    // substituting back in x, y, z, we get the looking vector in the normal x, y, z space
+    // -z = sin(yaw) => z = -sin(yaw)
+    // -x = cos(yaw) => x = -cos(yaw)
+    // y = tan(pitch)
+
+    // normalizing the vectors, we divide each by |sqrt(x*x + y*y + z*z)|
+    // x*x + y*y = sin^2 + cos^2 = 1
+    // so |sqrt(xx+yy+zz)| = |sqrt(1+tan^2(pitch))|
+    //     = |sqrt(1+sin^2(pitch)/cos^2(pitch))|
+    //     = |sqrt((cos^2+sin^2)/cos^2(pitch))|
+    //     = |sqrt(1/cos^2(pitch))|
+    //     = |+/- 1/cos(pitch)|
+    //     = 1/cos(pitch) since pitch in [-90, 90]
+
+    // the looking vector is therefore
+    // x = -cos(yaw) * cos(pitch)
+    // y = tan(pitch) * cos(pitch) = sin(pitch)
+    // z = -sin(yaw) * cos(pitch)
+
+    const yaw = entity.yaw
+    const pitch = entity.pitch
+    const sinYaw = Math.sin(yaw)
+    const cosYaw = Math.cos(yaw)
+    const sinPitch = Math.sin(pitch)
+    const cosPitch = Math.cos(pitch)
+    const lookX = -sinYaw * cosPitch
+    const lookY = sinPitch
+    const lookZ = -cosYaw * cosPitch
+    const lookDir = new Vec3(lookX, lookY, lookZ)
+    return {
+      yaw,
+      pitch,
+      sinYaw,
+      cosYaw,
+      sinPitch,
+      cosPitch,
+      lookX,
+      lookY,
+      lookZ,
+      lookDir
+    }
+  }
+
   function applyHeading (entity, strafe, forward, multiplier) {
     let speed = Math.sqrt(strafe * strafe + forward * forward)
     if (speed < 0.01) return new Vec3(0, 0, 0)
@@ -377,7 +435,76 @@ function Physics (mcData, world) {
 
     const gravityMultiplier = (vel.y <= 0 && entity.slowFalling > 0) ? physics.slowFalling : 1
 
-    if (!entity.isInWater && !entity.isInLava) {
+    if (entity.isInWater || entity.isInLava) {
+      // Water / Lava movement
+      const lastY = pos.y
+      let acceleration = physics.liquidAcceleration
+      const inertia = entity.isInWater ? physics.waterInertia : physics.lavaInertia
+      let horizontalInertia = inertia
+
+      if (entity.isInWater) {
+        let strider = Math.min(entity.depthStrider, 3)
+        if (!entity.onGround) {
+          strider *= 0.5
+        }
+        if (strider > 0) {
+          horizontalInertia += (0.546 - horizontalInertia) * strider / 3
+          acceleration += (0.7 - acceleration) * strider / 3
+        }
+
+        if (entity.dolphinsGrace > 0) horizontalInertia = 0.96
+      }
+
+      applyHeading(entity, strafe, forward, acceleration)
+      moveEntity(entity, world, vel.x, vel.y, vel.z)
+      vel.y *= inertia
+      vel.y -= (entity.isInWater ? physics.waterGravity : physics.lavaGravity) * gravityMultiplier
+      vel.x *= horizontalInertia
+      vel.z *= horizontalInertia
+
+      if (entity.isCollidedHorizontally && doesNotCollide(world, pos.offset(vel.x, vel.y + 0.6 - pos.y + lastY, vel.z))) {
+        vel.y = physics.outOfLiquidImpulse // jump out of liquid
+      }
+    } else if (entity.elytraFlying) {
+      const {
+        pitch,
+        sinPitch,
+        cosPitch,
+        lookDir
+      } = getLookingVector(entity)
+      const horizontalSpeed = Math.sqrt(vel.x * vel.x + vel.z * vel.z)
+      const cosPitchSquared = cosPitch * cosPitch
+      vel.y += physics.gravity * gravityMultiplier * (-1.0 + cosPitchSquared * 0.75)
+      // cosPitch is in [0, 1], so cosPitch > 0.0 is just to protect against
+      // divide by zero errors
+      if (vel.y < 0.0 && cosPitch > 0.0) {
+        const movingDownSpeedModifier = vel.y * (-0.1) * cosPitchSquared
+        vel.x += lookDir.x * movingDownSpeedModifier / cosPitch
+        vel.y += movingDownSpeedModifier
+        vel.z += lookDir.z * movingDownSpeedModifier / cosPitch
+      }
+
+      if (pitch < 0.0 && cosPitch > 0.0) {
+        const lookDownSpeedModifier = horizontalSpeed * (-sinPitch) * 0.04
+        vel.x += -lookDir.x * lookDownSpeedModifier / cosPitch
+        vel.y += lookDownSpeedModifier * 3.2
+        vel.z += -lookDir.z * lookDownSpeedModifier / cosPitch
+      }
+
+      if (cosPitch > 0.0) {
+        vel.x += (lookDir.x / cosPitch * horizontalSpeed - vel.x) * 0.1
+        vel.z += (lookDir.z / cosPitch * horizontalSpeed - vel.z) * 0.1
+      }
+
+      vel.x *= 0.99
+      vel.y *= 0.98
+      vel.z *= 0.99
+      moveEntity(entity, world, vel.x, vel.y, vel.z)
+
+      if (entity.onGround) {
+        entity.elytraFlying = false
+      }
+    } else {
       // Normal movement
       let acceleration = 0.0
       let inertia = 0.0
@@ -442,36 +569,6 @@ function Physics (mcData, world) {
       vel.y *= physics.airdrag
       vel.x *= inertia
       vel.z *= inertia
-    } else {
-      // Water / Lava movement
-      const lastY = pos.y
-      let acceleration = physics.liquidAcceleration
-      const inertia = entity.isInWater ? physics.waterInertia : physics.lavaInertia
-      let horizontalInertia = inertia
-
-      if (entity.isInWater) {
-        let strider = Math.min(entity.depthStrider, 3)
-        if (!entity.onGround) {
-          strider *= 0.5
-        }
-        if (strider > 0) {
-          horizontalInertia += (0.546 - horizontalInertia) * strider / 3
-          acceleration += (0.7 - acceleration) * strider / 3
-        }
-
-        if (entity.dolphinsGrace > 0) horizontalInertia = 0.96
-      }
-
-      applyHeading(entity, strafe, forward, acceleration)
-      moveEntity(entity, world, vel.x, vel.y, vel.z)
-      vel.y *= inertia
-      vel.y -= (entity.isInWater ? physics.waterGravity : physics.lavaGravity) * gravityMultiplier
-      vel.x *= horizontalInertia
-      vel.z *= horizontalInertia
-
-      if (entity.isCollidedHorizontally && doesNotCollide(world, pos.offset(vel.x, vel.y + 0.6 - pos.y + lastY, vel.z))) {
-        vel.y = physics.outOfLiquidImpulse // jump out of liquid
-      }
     }
   }
 
@@ -617,6 +714,20 @@ function Physics (mcData, world) {
       forward *= physics.sneakSpeed
     }
 
+    entity.elytraFlying = entity.elytraFlying && entity.elytraEquipped && !entity.onGround && !entity.levitation
+
+    if (entity.fireworkRocketDuration > 0) {
+      if (!entity.elytraFlying) {
+        entity.fireworkRocketDuration = 0
+      } else {
+        const { lookDir } = getLookingVector(entity)
+        vel.x += lookDir.x * 0.1 + (lookDir.x * 1.5 - vel.x) * 0.5
+        vel.y += lookDir.y * 0.1 + (lookDir.y * 1.5 - vel.y) * 0.5
+        vel.z += lookDir.z * 0.1 + (lookDir.z * 1.5 - vel.z) * 0.5
+        --entity.fireworkRocketDuration
+      }
+    }
+
     moveEntityWithHeading(entity, world, strafe, forward)
 
     return entity
@@ -671,6 +782,8 @@ class PlayerState {
     this.isCollidedVertically = bot.entity.isCollidedVertically
     this.jumpTicks = bot.jumpTicks
     this.jumpQueued = bot.jumpQueued
+    this.elytraFlying = bot.elytraFlying
+    this.fireworkRocketDuration = bot.fireworkRocketDuration
 
     // Input only (not modified)
     this.attributes = bot.entity.attributes
@@ -698,6 +811,10 @@ class PlayerState {
     } else {
       this.depthStrider = 0
     }
+
+    // extra elytra requirements
+    const item = bot.inventory.slots[6]
+    this.elytraEquipped = item != null && item.name === 'elytra'
   }
 
   apply (bot) {
@@ -711,6 +828,8 @@ class PlayerState {
     bot.entity.isCollidedVertically = this.isCollidedVertically
     bot.jumpTicks = this.jumpTicks
     bot.jumpQueued = this.jumpQueued
+    bot.elytraFlying = this.elytraFlying
+    bot.fireworkRocketDuration = this.fireworkRocketDuration
   }
 }
 
