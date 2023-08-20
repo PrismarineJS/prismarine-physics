@@ -475,7 +475,7 @@ function Physics (mcData, world) {
     }
   }
 
-  function isMaterialInBB (world, queryBB, ...types) {
+  function isMaterialInBB (world, queryBB, types) {
     const cursor = new Vec3(0, 0, 0)
     for (cursor.y = Math.floor(queryBB.minY); cursor.y <= Math.floor(queryBB.maxY); cursor.y++) {
       for (cursor.z = Math.floor(queryBB.minZ); cursor.z <= Math.floor(queryBB.maxZ); cursor.z++) {
@@ -579,7 +579,7 @@ function Physics (mcData, world) {
     const lavaBB = getPlayerBB(pos).contract(0.1, 0.4, 0.1)
 
     entity.isInWater = isInWaterApplyCurrent(world, waterBB, vel)
-    entity.isInLava = isMaterialInBB(world, lavaBB, ...lavaIds)
+    entity.isInLava = isMaterialInBB(world, lavaBB, lavaIds)
 
     // Reset velocity component if it falls under the threshold
     if (Math.abs(vel.x) < physics.negligeableVelocity) vel.x = 0
