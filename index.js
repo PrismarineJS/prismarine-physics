@@ -579,7 +579,7 @@ function Physics (mcData, world) {
     const lavaBB = getPlayerBB(pos).contract(0.1, 0.4, 0.1)
 
     entity.isInWater = isInWaterApplyCurrent(world, waterBB, vel)
-    entity.isInLava = isMaterialInBB(world, lavaBB, lavaIds)
+    entity.isInLava = isMaterialInBB(world, lavaBB, ...lavaIds)
 
     // Reset velocity component if it falls under the threshold
     if (Math.abs(vel.x) < physics.negligeableVelocity) vel.x = 0
