@@ -30,8 +30,8 @@ function Physics (mcData, world) {
   const soulsandId = blocksByName.soul_sand.id
   const honeyblockId = blocksByName.honey_block ? blocksByName.honey_block.id : -1 // 1.15+
   const webId = blocksByName.cobweb ? blocksByName.cobweb.id : blocksByName.web.id
-  const waterId = blocksByName.water.id
-  const lavaId = blocksByName.lava.id
+  const waterIds = [blocksByName.water.id, blocksByName.flowing_water ? blocksByName.flowing_water.id : -1]
+  const lavaIds = [blocksByName.lava.id, blocksByName.flowing_lava ? blocksByName.flowing_lava.id : -1]
   const ladderId = blocksByName.ladder.id
   const vineId = blocksByName.vine.id
   const waterLike = new Set()
@@ -475,13 +475,13 @@ function Physics (mcData, world) {
     }
   }
 
-  function isMaterialInBB (world, queryBB, type) {
+  function isMaterialInBB (world, queryBB, types) {
     const cursor = new Vec3(0, 0, 0)
     for (cursor.y = Math.floor(queryBB.minY); cursor.y <= Math.floor(queryBB.maxY); cursor.y++) {
       for (cursor.z = Math.floor(queryBB.minZ); cursor.z <= Math.floor(queryBB.maxZ); cursor.z++) {
         for (cursor.x = Math.floor(queryBB.minX); cursor.x <= Math.floor(queryBB.maxX); cursor.x++) {
           const block = world.getBlock(cursor)
-          if (block && block.type === type) return true
+          if (block && types.includes(block.type)) return true
         }
       }
     }
@@ -496,7 +496,7 @@ function Physics (mcData, world) {
     if (!block) return -1
     if (waterLike.has(block.type)) return 0
     if (block.getProperties().waterlogged) return 0
-    if (block.type !== waterId) return -1
+    if (!waterIds.includes(block.type)) return -1
     const meta = block.metadata
     return meta >= 8 ? 0 : meta
   }
@@ -543,7 +543,7 @@ function Physics (mcData, world) {
       for (cursor.z = Math.floor(bb.minZ); cursor.z <= Math.floor(bb.maxZ); cursor.z++) {
         for (cursor.x = Math.floor(bb.minX); cursor.x <= Math.floor(bb.maxX); cursor.x++) {
           const block = world.getBlock(cursor)
-          if (block && (block.type === waterId || waterLike.has(block.type) || block.getProperties().waterlogged)) {
+          if (block && (waterIds.includes(block.type) || waterLike.has(block.type) || block.getProperties().waterlogged)) {
             const waterLevel = cursor.y + 1 - getLiquidHeightPcent(block)
             if (Math.ceil(bb.maxY) >= waterLevel) waterBlocks.push(block)
           }
@@ -579,7 +579,7 @@ function Physics (mcData, world) {
     const lavaBB = getPlayerBB(pos).contract(0.1, 0.4, 0.1)
 
     entity.isInWater = isInWaterApplyCurrent(world, waterBB, vel)
-    entity.isInLava = isMaterialInBB(world, lavaBB, lavaId)
+    entity.isInLava = isMaterialInBB(world, lavaBB, lavaIds)
 
     // Reset velocity component if it falls under the threshold
     if (Math.abs(vel.x) < physics.negligeableVelocity) vel.x = 0
