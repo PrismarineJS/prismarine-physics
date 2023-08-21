@@ -39,15 +39,18 @@ const player = {
       isInWeb: false,
       isCollidedHorizontally: false,
       isCollidedVertically: false,
-      yaw: 0
+      yaw: 0,
+      pitch: 0
     },
     jumpTicks: 0,
-    jumpQueued: false
+    jumpQueued: false,
+    elytraFlying: false,
+    fireworkRocketDuration: 0
   }
-const playerState = new PlayerState(player, controls)
 
 while (!player.entity.onGround) {
   // simulate 1 tick of player physic, then apply the result to the player
+  const playerState = new PlayerState(player, controls)
   physics.simulatePlayer(playerState, world).apply(player)
 }
 ```
@@ -78,6 +81,8 @@ Read / Write properties:
 - isCollidedVertically : (boolean) is the player collided vertically with a solid block ?
 - jumpTicks : (integer) number of ticks before the player can auto-jump again
 - jumpQueued : (boolean) true if the jump control state was true between the last tick and the current one
+- elytraFlying : (boolean) is the player elytra flying ?
+- fireworkRocketDuration : (number) how many ticks of firework boost are remaining ?
 
 Read only properties:
 - yaw : (float) the yaw angle, in radians, of the player entity
