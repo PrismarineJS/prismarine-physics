@@ -22,6 +22,7 @@ function fakePlayer (pos, baseVersion) {
       isInWater: false,
       isInLava: false,
       isInWeb: false,
+      elytraFlying: false,
       isCollidedHorizontally: false,
       isCollidedVertically: false,
       yaw: 0,
@@ -33,7 +34,6 @@ function fakePlayer (pos, baseVersion) {
     },
     jumpTicks: 0,
     jumpQueued: false,
-    elytraFlying: false,
     fireworkRocketDuration: 0,
     version: baseVersion
   }

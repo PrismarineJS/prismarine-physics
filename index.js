@@ -780,9 +780,9 @@ class PlayerState {
     this.isInWeb = bot.entity.isInWeb
     this.isCollidedHorizontally = bot.entity.isCollidedHorizontally
     this.isCollidedVertically = bot.entity.isCollidedVertically
+    this.elytraFlying = bot.entity.elytraFlying
     this.jumpTicks = bot.jumpTicks
     this.jumpQueued = bot.jumpQueued
-    this.elytraFlying = bot.elytraFlying
     this.fireworkRocketDuration = bot.fireworkRocketDuration
 
     // Input only (not modified)
@@ -826,9 +826,9 @@ class PlayerState {
     bot.entity.isInWeb = this.isInWeb
     bot.entity.isCollidedHorizontally = this.isCollidedHorizontally
     bot.entity.isCollidedVertically = this.isCollidedVertically
+    bot.entity.elytraFlying = this.elytraFlying
     bot.jumpTicks = this.jumpTicks
     bot.jumpQueued = this.jumpQueued
-    bot.elytraFlying = this.elytraFlying
     bot.fireworkRocketDuration = this.fireworkRocketDuration
   }
 }

@@ -63,13 +63,13 @@ function fakePlayer (pos) {
       isInWeb: false,
       isCollidedHorizontally: false,
       isCollidedVertically: false,
+      elytraFlying: false,
       yaw: Math.PI * 3 / 2, // east (+x)
       pitch: 20 * Math.PI / 180,
       effects: {}
     },
     jumpTicks: 0,
     jumpQueued: false,
-    elytraFlying: false,
     fireworkRocketDuration: 0,
     version: '1.13.2',
     inventory: {
@@ -125,7 +125,7 @@ describe('Elytra tests', () => {
     expect(player.entity.onGround).toBeFalsy()
 
     // fly
-    player.elytraFlying = true
+    player.entity.elytraFlying = true
     passTicks(1, player, physics, fakeWorld, controls)
 
     // boost
@@ -134,7 +134,7 @@ describe('Elytra tests', () => {
     // wait til on ground
     untilIdle(player, physics, fakeWorld, controls)
 
-    expect(player.elytraFlying).toBeFalsy()
+    expect(player.entity.elytraFlying).toBeFalsy()
     expect(player.fireworkRocketDuration).toEqual(0)
 
     expect(player.entity.position.x).toBeGreaterThan(140)
@@ -151,9 +151,9 @@ describe('Elytra tests', () => {
     expect(player.entity.onGround).toBeFalsy()
 
     // fly
-    player.elytraFlying = true
+    player.entity.elytraFlying = true
     passTicks(1, player, physics, fakeWorld, controls)
-    expect(player.elytraFlying).toBeTruthy()
+    expect(player.entity.elytraFlying).toBeTruthy()
 
     // boost
     player.fireworkRocketDuration = 20
@@ -161,7 +161,7 @@ describe('Elytra tests', () => {
     // wait til on ground
     untilIdle(player, physics, fakeWorld, controls)
 
-    expect(player.elytraFlying).toBeFalsy()
+    expect(player.entity.elytraFlying).toBeFalsy()
     expect(player.fireworkRocketDuration).toEqual(0)
 
     // should be back at start
@@ -184,14 +184,14 @@ describe('Elytra tests', () => {
     const player = fakePlayer(new Vec3(0, 80, 0))
     player.inventory.slots[6] = { name: 'elytra' }
 
-    player.elytraFlying = true
+    player.entity.elytraFlying = true
     player.fireworkRocketDuration = 20
     physics.simulatePlayer(new PlayerState(player, controls), fakeWorld).apply(player)
-    expect(player.elytraFlying).toBeTruthy()
+    expect(player.entity.elytraFlying).toBeTruthy()
     expect(player.fireworkRocketDuration).toEqual(19)
     player.inventory.slots[6] = undefined
     physics.simulatePlayer(new PlayerState(player, controls), fakeWorld).apply(player)
-    expect(player.elytraFlying).toBeFalsy()
+    expect(player.entity.elytraFlying).toBeFalsy()
     expect(player.fireworkRocketDuration).toEqual(0)
   })
 
@@ -210,17 +210,17 @@ describe('Elytra tests', () => {
     player.inventory.slots[6] = { name: 'elytra' }
     player.entity.pitch = 80 * Math.PI / 180
 
-    player.elytraFlying = true
+    player.entity.elytraFlying = true
     physics.simulatePlayer(new PlayerState(player, controls), waterWorld).apply(player)
     expect(player.entity.isInWater).toBeTruthy()
-    expect(player.elytraFlying).toBeTruthy()
+    expect(player.entity.elytraFlying).toBeTruthy()
     physics.simulatePlayer(new PlayerState(player, controls), waterWorld).apply(player)
     expect(player.entity.isInWater).toBeTruthy()
-    expect(player.elytraFlying).toBeTruthy()
+    expect(player.entity.elytraFlying).toBeTruthy()
 
     player.fireworkRocketDuration = 20
     physics.simulatePlayer(new PlayerState(player, controls), waterWorld).apply(player)
-    expect(player.elytraFlying).toBeTruthy()
+    expect(player.entity.elytraFlying).toBeTruthy()
     expect(player.fireworkRocketDuration).toEqual(19)
 
     const playerState = new PlayerState(player, controls)
@@ -248,17 +248,17 @@ describe('Elytra tests', () => {
     player.inventory.slots[6] = { name: 'elytra' }
     player.entity.pitch = 80 * Math.PI / 180
 
-    player.elytraFlying = true
+    player.entity.elytraFlying = true
     physics.simulatePlayer(new PlayerState(player, controls), lavaWorld).apply(player)
     expect(player.entity.isInLava).toBeTruthy()
-    expect(player.elytraFlying).toBeTruthy()
+    expect(player.entity.elytraFlying).toBeTruthy()
     physics.simulatePlayer(new PlayerState(player, controls), lavaWorld).apply(player)
     expect(player.entity.isInLava).toBeTruthy()
-    expect(player.elytraFlying).toBeTruthy()
+    expect(player.entity.elytraFlying).toBeTruthy()
 
     player.fireworkRocketDuration = 20
     physics.simulatePlayer(new PlayerState(player, controls), lavaWorld).apply(player)
-    expect(player.elytraFlying).toBeTruthy()
+    expect(player.entity.elytraFlying).toBeTruthy()
     expect(player.fireworkRocketDuration).toEqual(19)
 
     const playerState = new PlayerState(player, controls)
@@ -295,7 +295,7 @@ describe('Elytra tests', () => {
     expect(player.entity.onGround).toBeFalsy()
 
     // fly
-    player.elytraFlying = true
+    player.entity.elytraFlying = true
     passTicks(1, player, physics, fakeWorld, controls)
 
     // boost
@@ -311,12 +311,12 @@ describe('Elytra tests', () => {
     }
     playerState.apply(player)
     expect(player.entity.onGround).toBeTruthy()
-    expect(player.elytraFlying).toBeFalsy()
+    expect(player.entity.elytraFlying).toBeFalsy()
 
     // let jump controls cause a jump
     passTicks(10, player, physics, fakeWorld, controls)
     expect(player.entity.onGround).toBeFalsy()
-    expect(player.elytraFlying).toBeFalsy()
+    expect(player.entity.elytraFlying).toBeFalsy()
   })
 
   it('cant fly in webs', () => {
@@ -333,12 +333,12 @@ describe('Elytra tests', () => {
     }
     const airPlayer = fakePlayer(new Vec3(0, 150, 0))
     airPlayer.inventory.slots[6] = { name: 'elytra' }
-    airPlayer.elytraFlying = true
+    airPlayer.entity.elytraFlying = true
     passTicks(20 * 10, airPlayer, airPhysics, fakeWorld, controls)
 
     const webPlayer = fakePlayer(new Vec3(0, 150, 0))
     webPlayer.inventory.slots[6] = { name: 'elytra' }
-    webPlayer.elytraFlying = true
+    webPlayer.entity.elytraFlying = true
     passTicks(20 * 10, webPlayer, webPhysics, fakeWebWorld, controls)
 
     // web player should have barely moved
@@ -364,7 +364,7 @@ describe('Elytra tests', () => {
     }
     const player = fakePlayer(new Vec3(0, 100, 0))
     player.inventory.slots[6] = { name: 'elytra' }
-    player.elytraFlying = true
+    player.entity.elytraFlying = true
     player.fireworkRocketDuration = 100
 
     // let bot accelerate from firework
@@ -403,7 +403,7 @@ describe('Elytra tests', () => {
     }
     const player = fakePlayer(new Vec3(0, 100, 0))
     player.inventory.slots[6] = { name: 'elytra' }
-    player.elytraFlying = true
+    player.entity.elytraFlying = true
     player.entity.pitch = Math.PI / 2
     player.fireworkRocketDuration = 20
 
@@ -444,7 +444,7 @@ describe('Elytra tests', () => {
     }
     const player = fakePlayer(new Vec3(0, 1000, 0))
     player.inventory.slots[6] = { name: 'elytra' }
-    player.elytraFlying = true
+    player.entity.elytraFlying = true
     player.entity.pitch = -Math.PI / 2
     player.fireworkRocketDuration = 20
 
