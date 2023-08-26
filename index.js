@@ -354,17 +354,17 @@ function Physics (mcData, world) {
     // let z' = y (up)
 
     // the non normalized looking vector in x', y', z' space is
-    // x' is sin(yaw)
-    // y' is cos(yaw)
+    // x' is cos(yaw)
+    // y' is sin(yaw)
     // z' is tan(pitch)
 
     // substituting back in x, y, z, we get the looking vector in the normal x, y, z space
-    // -z = sin(yaw) => z = -sin(yaw)
-    // -x = cos(yaw) => x = -cos(yaw)
+    // -z = cos(yaw) => z = -cos(yaw)
+    // -x = sin(yaw) => x = -sin(yaw)
     // y = tan(pitch)
 
     // normalizing the vectors, we divide each by |sqrt(x*x + y*y + z*z)|
-    // x*x + y*y = sin^2 + cos^2 = 1
+    // x*x + z*z = sin^2 + cos^2 = 1
     // so |sqrt(xx+yy+zz)| = |sqrt(1+tan^2(pitch))|
     //     = |sqrt(1+sin^2(pitch)/cos^2(pitch))|
     //     = |sqrt((cos^2+sin^2)/cos^2(pitch))|
@@ -373,9 +373,9 @@ function Physics (mcData, world) {
     //     = 1/cos(pitch) since pitch in [-90, 90]
 
     // the looking vector is therefore
-    // x = -cos(yaw) * cos(pitch)
+    // x = -sin(yaw) * cos(pitch)
     // y = tan(pitch) * cos(pitch) = sin(pitch)
-    // z = -sin(yaw) * cos(pitch)
+    // z = -cos(yaw) * cos(pitch)
 
     const yaw = entity.yaw
     const pitch = entity.pitch
