@@ -170,6 +170,149 @@ describe('Elytra tests', () => {
     expect(player.entity.position.z).toBeCloseTo(0)
   })
 
+  it('flies south and then back', () => {
+    const physics = Physics(mcData, fakeWorld)
+    const controls = {
+      forward: false,
+      back: false,
+      left: false,
+      right: false,
+      jump: false,
+      sprint: false,
+      sneak: false
+    }
+    const player = fakePlayer(new Vec3(0, 61, 0))
+    player.inventory.slots[6] = { name: 'elytra' }
+    player.entity.yaw = 0 // north (-z)
+
+    // wait til on ground
+    untilIdle(player, physics, fakeWorld, controls)
+
+    expect(player.entity.position).toEqual(new Vec3(0, 60, 0))
+
+    // jump
+    player.jumpQueued = true
+    passTicks(10, player, physics, fakeWorld, controls)
+    expect(player.entity.onGround).toBeFalsy()
+
+    // fly
+    player.entity.elytraFlying = true
+    passTicks(1, player, physics, fakeWorld, controls)
+
+    // boost
+    player.fireworkRocketDuration = 20
+
+    // wait til on ground
+    untilIdle(player, physics, fakeWorld, controls)
+
+    expect(player.entity.elytraFlying).toBeFalsy()
+    expect(player.fireworkRocketDuration).toEqual(0)
+
+    expect(player.entity.position.x).toBeCloseTo(0)
+    expect(player.entity.position.y).toEqual(60)
+    expect(player.entity.position.z).toBeLessThan(-140)
+
+    // turn around
+    player.entity.yaw = Math.PI // south (z)
+
+    // jump
+    player.jumpQueued = true
+    passTicks(10, player, physics, fakeWorld, controls)
+
+    expect(player.entity.onGround).toBeFalsy()
+
+    // fly
+    player.entity.elytraFlying = true
+    passTicks(1, player, physics, fakeWorld, controls)
+    expect(player.entity.elytraFlying).toBeTruthy()
+
+    // boost
+    player.fireworkRocketDuration = 20
+
+    // wait til on ground
+    untilIdle(player, physics, fakeWorld, controls)
+
+    expect(player.entity.elytraFlying).toBeFalsy()
+    expect(player.fireworkRocketDuration).toEqual(0)
+
+    // should be back at start
+    expect(player.entity.position.x).toBeCloseTo(0)
+    expect(player.entity.position.y).toEqual(60)
+    expect(player.entity.position.z).toBeCloseTo(0)
+  })
+
+  it('flies north east and then back', () => {
+    const physics = Physics(mcData, fakeWorld)
+    const controls = {
+      forward: false,
+      back: false,
+      left: false,
+      right: false,
+      jump: false,
+      sprint: false,
+      sneak: false
+    }
+    const player = fakePlayer(new Vec3(0, 61, 0))
+    player.inventory.slots[6] = { name: 'elytra' }
+    // facing positive z, to the left is positive x
+    player.entity.yaw = -Math.PI / 4 + 2 * Math.PI // right 45 degrees of north (-z), towards east (+x)
+
+    // wait til on ground
+    untilIdle(player, physics, fakeWorld, controls)
+
+    expect(player.entity.position).toEqual(new Vec3(0, 60, 0))
+
+    // jump
+    player.jumpQueued = true
+    passTicks(10, player, physics, fakeWorld, controls)
+    expect(player.entity.onGround).toBeFalsy()
+
+    // fly
+    player.entity.elytraFlying = true
+    passTicks(1, player, physics, fakeWorld, controls)
+
+    // boost
+    player.fireworkRocketDuration = 20
+
+    // wait til on ground
+    untilIdle(player, physics, fakeWorld, controls)
+
+    expect(player.entity.elytraFlying).toBeFalsy()
+    expect(player.fireworkRocketDuration).toEqual(0)
+
+    expect(player.entity.position.x).toBeGreaterThan(140 * Math.sin(Math.PI / 4))
+    expect(player.entity.position.y).toEqual(60)
+    expect(player.entity.position.z).toBeLessThan(-140 * Math.sin(Math.PI / 4))
+
+    // turn around
+    player.entity.yaw = -Math.PI / 4 + Math.PI // south (z)
+
+    // jump
+    player.jumpQueued = true
+    passTicks(10, player, physics, fakeWorld, controls)
+
+    expect(player.entity.onGround).toBeFalsy()
+
+    // fly
+    player.entity.elytraFlying = true
+    passTicks(1, player, physics, fakeWorld, controls)
+    expect(player.entity.elytraFlying).toBeTruthy()
+
+    // boost
+    player.fireworkRocketDuration = 20
+
+    // wait til on ground
+    untilIdle(player, physics, fakeWorld, controls)
+
+    expect(player.entity.elytraFlying).toBeFalsy()
+    expect(player.fireworkRocketDuration).toEqual(0)
+
+    // should be back at start
+    expect(player.entity.position.x).toBeCloseTo(0)
+    expect(player.entity.position.y).toEqual(60)
+    expect(player.entity.position.z).toBeCloseTo(0)
+  })
+
   it('stops flight without elytra', () => {
     const physics = Physics(mcData, fakeWorld)
     const controls = {
@@ -465,6 +608,85 @@ describe('Elytra tests', () => {
     expect(player.entity.position.y).toBeGreaterThan(100)
     expect(player.entity.velocity.y).toBeGreaterThan(mpsToTps(-40))
     expect(player.entity.position.x).toBeCloseTo(0)
+    expect(player.entity.position.z).toBeCloseTo(0)
+  })
+
+  it('flies to point and then back', () => {
+    const physics = Physics(mcData, fakeWorld)
+    const controls = {
+      forward: false,
+      back: false,
+      left: false,
+      right: false,
+      jump: false,
+      sprint: false,
+      sneak: false
+    }
+    const player = fakePlayer(new Vec3(0, 61, 0))
+    player.inventory.slots[6] = { name: 'elytra' }
+
+    // wait til on ground
+    untilIdle(player, physics, fakeWorld, controls)
+
+    expect(player.entity.position).toEqual(new Vec3(0, 60, 0))
+
+    const unNormedFacing = new Vec3(300, 60, 400)
+    const facing = unNormedFacing.scale(1 / unNormedFacing.xzDistanceTo(new Vec3(0, 60, 0)))
+
+    // yaw is facing north (-z) and rotating to the left, west (-z), so
+    // atan2(-x, -z) is yaw
+    const yaw = Math.atan2(-facing.x, -facing.z)
+    player.entity.yaw = yaw
+
+    // jump
+    player.jumpQueued = true
+    passTicks(10, player, physics, fakeWorld, controls)
+    expect(player.entity.onGround).toBeFalsy()
+
+    // fly
+    player.entity.elytraFlying = true
+    passTicks(1, player, physics, fakeWorld, controls)
+
+    // boost
+    player.fireworkRocketDuration = 20
+
+    // wait til on ground
+    untilIdle(player, physics, fakeWorld, controls)
+
+    expect(player.entity.elytraFlying).toBeFalsy()
+    expect(player.fireworkRocketDuration).toEqual(0)
+
+    facing.scale(player.entity.position.xzDistanceTo(new Vec3(0, 60, 0)))
+    expect(player.entity.position.x).toBeCloseTo(facing.x)
+    expect(player.entity.position.y).toBeCloseTo(60)
+    expect(player.entity.position.z).toBeCloseTo(facing.z)
+
+    // turn around
+    player.entity.yaw += Math.PI
+
+    // jump
+    player.jumpQueued = true
+    passTicks(10, player, physics, fakeWorld, controls)
+
+    expect(player.entity.onGround).toBeFalsy()
+
+    // fly
+    player.entity.elytraFlying = true
+    passTicks(1, player, physics, fakeWorld, controls)
+    expect(player.entity.elytraFlying).toBeTruthy()
+
+    // boost
+    player.fireworkRocketDuration = 20
+
+    // wait til on ground
+    untilIdle(player, physics, fakeWorld, controls)
+
+    expect(player.entity.elytraFlying).toBeFalsy()
+    expect(player.fireworkRocketDuration).toEqual(0)
+
+    // should be back at start
+    expect(player.entity.position.x).toBeCloseTo(0)
+    expect(player.entity.position.y).toEqual(60)
     expect(player.entity.position.z).toBeCloseTo(0)
   })
 })
