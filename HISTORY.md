@@ -1,5 +1,13 @@
 ## History
 
+### 1.8.0
+* [Add support for elytra and rockets (#106)](https://github.com/PrismarineJS/prismarine-physics/commit/04351b4c5fa73e9eb7ca79b88c63f5bef59b5645) (thanks @lkwilson)
+* [Fix "flowing" liquids not being included (#105)](https://github.com/PrismarineJS/prismarine-physics/commit/1f95aaad67684b381aedeb0a990e93dbb03025d0) (thanks @Flonja)
+* [Update index.js (#104)](https://github.com/PrismarineJS/prismarine-physics/commit/dd159da044af4959f9fd8d7d97c14921e7288c1e) (thanks @Vakore)
+* [Fixed airborne movement factor for sprinting (#75)](https://github.com/PrismarineJS/prismarine-physics/commit/116bb6fe3ae5066d53cedb69683a5fdb497c470d) (thanks @olie304)
+* [Add command gh workflow allowing to use release command in comments (#102)](https://github.com/PrismarineJS/prismarine-physics/commit/6797491346be0ef1572aac94c78b2a1377982d54) (thanks @rom1504)
+* [Fix 1.17 & 1.18 effect names (#101)](https://github.com/PrismarineJS/prismarine-physics/commit/cc7ae73d6929689645e77c7ba26bf0dcc4bc1e01) (thanks @killbinvlog)
+
 ### 1.7.0
 
 * 1.20
