@@ -39,10 +39,13 @@ const player = {
       isInWeb: false,
       isCollidedHorizontally: false,
       isCollidedVertically: false,
-      yaw: 0
+      elytraFlying: false,
+      yaw: 0,
+      pitch: 0
     },
     jumpTicks: 0,
-    jumpQueued: false
+    jumpQueued: false,
+    fireworkRocketDuration: 0
   }
 const playerState = new PlayerState(player, controls)
 
@@ -76,8 +79,10 @@ Read / Write properties:
 - isInWeb : (boolean) is the player in a web ?
 - isCollidedHorizontally : (boolean) is the player collided horizontally with a solid block ?
 - isCollidedVertically : (boolean) is the player collided vertically with a solid block ?
+- elytraFlying : (boolean) is the player elytra flying ?
 - jumpTicks : (integer) number of ticks before the player can auto-jump again
 - jumpQueued : (boolean) true if the jump control state was true between the last tick and the current one
+- fireworkRocketDuration : (number) how many ticks of firework boost are remaining ?
 
 Read only properties:
 - yaw : (float) the yaw angle, in radians, of the player entity

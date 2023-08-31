@@ -27,11 +27,14 @@ function fakePlayer (pos) {
       isInWeb: false,
       isCollidedHorizontally: false,
       isCollidedVertically: false,
+      elytraFlying: false,
       yaw: 0,
+      pitch: 0,
       effects: {}
     },
     jumpTicks: 0,
     jumpQueued: false,
+    fireworkRocketDuration: 0,
     version: '1.13.2',
     inventory: {
       slots: []
