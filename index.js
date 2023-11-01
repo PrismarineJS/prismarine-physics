@@ -4,6 +4,21 @@ const math = require('./lib/math')
 const features = require('./lib/features')
 const attribute = require('./lib/attribute')
 
+// This class parses features.json
+//
+// The versions field should be an array of conditions, reduced by 'OR'.
+// A condition is one of:
+//  - a major version string, e.g. "1.14", and this match all 1.14.x versions.
+//  - a predicate and a version string separated by a space, e.g. ">= 1.14".
+//  - an array of two types above, reduced by 'AND'.
+// A predicate is one of: [">", ">=", "<", "<=", "=="].
+// NOTE: Condition "== 1.14" only matches "1.14" but not "1.14.1"
+//
+// For example, the version [[">= 1.12", "< 1.14"], "== 1.19.1", "> 1.20"] can match:
+//  - 1.12.X
+//  - 1.13.X
+//  - 1.19.1
+//  - 1.20.1 and above
 class FeatureList {
   static checkVersion (version, condition) {
     const [predicateName, parameter] = condition.split(' ')
