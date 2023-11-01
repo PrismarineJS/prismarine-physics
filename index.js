@@ -4,12 +4,43 @@ const math = require('./lib/math')
 const features = require('./lib/features')
 const attribute = require('./lib/attribute')
 
-function makeSupportFeature (mcData) {
-  return feature => features.some(({ name, versions }) => name === feature && versions.includes(mcData.version.majorVersion))
-}
+class FeatureList {
+  static checkVersion (version, condition) {
+    const [predicateName, parameter] = condition.split(' ')
+    if (parameter == null) { return predicateName === version.majorVersion }
+    return version[predicateName](parameter)
+  }
+
+  constructor (feats, version) {
+    this.version = version
+    this.features = new Set()
+    for (const { name, versions } of feats) {
+      for (const versionConditions of versions) {
+        let flag = true
+        if (versionConditions instanceof Array) {
+          for (const condition of versionConditions) {
+            flag &= FeatureList.checkVersion(version, condition)
+          }
+        } else {
+          flag = FeatureList.checkVersion(version, versionConditions)
+        }
+
+        if (flag) {
+          this.features.add(name)
+          break
+        }
+      }
+    }
+  }
+
+  supportFeature (featureName) {
+    return this.features.has(featureName)
+  }
+};
 
 function Physics (mcData, world) {
-  const supportFeature = makeSupportFeature(mcData)
+  const supportedFeatureList = new FeatureList(features, mcData.version)
+  const supportFeature = (name) => supportedFeatureList.supportFeature(name)
   const blocksByName = mcData.blocksByName
 
   // Block Slipperiness
@@ -33,6 +64,21 @@ function Physics (mcData, world) {
   const waterIds = [blocksByName.water.id, blocksByName.flowing_water ? blocksByName.flowing_water.id : -1]
   const lavaIds = [blocksByName.lava.id, blocksByName.flowing_lava ? blocksByName.flowing_lava.id : -1]
   const ladderId = blocksByName.ladder.id
+
+  // NOTE: Copper trapdoors is coming in 1.21.
+  const trapdoorIds = new Set()
+  if (blocksByName.iron_trapdoor) { trapdoorIds.add(blocksByName.iron_trapdoor.id) } // 1.8+
+  if (blocksByName.acacia_trapdoor) { trapdoorIds.add(blocksByName.acacia_trapdoor.id) } // 1.13+
+  if (blocksByName.birch_trapdoor) { trapdoorIds.add(blocksByName.birch_trapdoor.id) } // 1.13+
+  if (blocksByName.jungle_trapdoor) { trapdoorIds.add(blocksByName.jungle_trapdoor.id) } // 1.13+
+  if (blocksByName.oak_trapdoor) { trapdoorIds.add(blocksByName.oak_trapdoor.id) } // 1.13+
+  if (blocksByName.dark_oak_trapdoor) { trapdoorIds.add(blocksByName.dark_oak_trapdoor.id) } // 1.13+
+  if (blocksByName.spruce_trapdoor) { trapdoorIds.add(blocksByName.spruce_trapdoor.id) } // 1.13+
+  if (blocksByName.crimson_trapdoor) { trapdoorIds.add(blocksByName.crimson_trapdoor.id) } // 1.16+
+  if (blocksByName.warped_trapdoor) { trapdoorIds.add(blocksByName.warped_trapdoor.id) } // 1.16+
+  if (blocksByName.mangrove_trapdoor) { trapdoorIds.add(blocksByName.mangrove_trapdoor.id) } // 1.19+
+  if (blocksByName.cherry_trapdoor) { trapdoorIds.add(blocksByName.cherry_trapdoor.id) } // 1.20+
+
   const vineId = blocksByName.vine.id
   const waterLike = new Set()
   if (blocksByName.seagrass) waterLike.add(blocksByName.seagrass.id) // 1.13+
@@ -421,7 +467,22 @@ function Physics (mcData, world) {
 
   function isOnLadder (world, pos) {
     const block = world.getBlock(pos)
-    return (block && (block.type === ladderId || block.type === vineId))
+    if (!block) { return false }
+    if (block.type === ladderId || block.type === vineId) { return true }
+
+    // Since 1.9, when a trapdoor satisfies the following conditions, it also becomes climbable:
+    //  1. The trapdoor is placed directly above a ladder.
+    //  2. The trapdoor is opened.
+    //  3. The trapdoor and the ladder directly below it face the same direction.
+    if (supportFeature('climableTrapdoor') && trapdoorIds.has(block.type)) {
+      const blockBelow = world.getBlock(pos.offset(0, -1, 0))
+      if (blockBelow.type !== ladderId) { return false } // condition 1.
+      if (!block.getProperties().open) { return false } // condition 2.
+      if (block.getProperties().facing !== blockBelow.getProperties().facing) { return false } // condition 3
+      return true
+    }
+
+    return false
   }
 
   function doesNotCollide (world, pos) {
@@ -833,4 +894,4 @@ class PlayerState {
   }
 }
 
-module.exports = { Physics, PlayerState }
+module.exports = { Physics, PlayerState, FeatureList }
