@@ -434,6 +434,7 @@ function Physics (mcData, world) {
     vel.z += forward * cos - strafe * sin
   }
 
+  const climbableTrapdoorFeature = supportFeature('climbableTrapdoor')
   function isOnLadder (world, pos) {
     const block = world.getBlock(pos)
     if (!block) { return false }
@@ -443,11 +444,12 @@ function Physics (mcData, world) {
     //  1. The trapdoor is placed directly above a ladder.
     //  2. The trapdoor is opened.
     //  3. The trapdoor and the ladder directly below it face the same direction.
-    if (supportFeature('climbableTrapdoor') && trapdoorIds.has(block.type)) {
+    if (climbableTrapdoorFeature && trapdoorIds.has(block.type)) {
       const blockBelow = world.getBlock(pos.offset(0, -1, 0))
       if (blockBelow.type !== ladderId) { return false } // condition 1.
-      if (!block.getProperties().open) { return false } // condition 2.
-      if (block.getProperties().facing !== blockBelow.getProperties().facing) { return false } // condition 3
+      const blockProperties = block.getProperties()
+      if (!blockProperties.open) { return false } // condition 2.
+      if (blockProperties.facing !== blockBelow.getProperties().facing) { return false } // condition 3
       return true
     }
 
