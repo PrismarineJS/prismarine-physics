@@ -515,7 +515,7 @@ function Physics (mcData, world) {
         if (entity.attributes && entity.attributes[physics.movementSpeedAttribute]) {
           // Use server-side player attributes
           playerSpeedAttribute = entity.attributes[physics.movementSpeedAttribute]
-          playerSpeedAttribute.value = 0.1;
+          playerSpeedAttribute.value = 0.1
         } else {
           // Create an attribute if the player does not have it
           playerSpeedAttribute = attribute.createAttributeValue(physics.playerSpeed)
@@ -534,8 +534,8 @@ function Physics (mcData, world) {
         }
         // Calculate what the speed is (0.1 if no modification)
         const attributeSpeed = attribute.getAttributeValue(playerSpeedAttribute)
-        inertia = (blockSlipperiness[blockUnder.type] || physics.defaultSlipperiness) * 0.91;
-        acceleration = attributeSpeed * (0.16277136 / (inertia * inertia * inertia));
+        inertia = (blockSlipperiness[blockUnder.type] || physics.defaultSlipperiness) * 0.91
+        acceleration = attributeSpeed * (0.16277136 / (inertia * inertia * inertia))
         if (acceleration < 0) acceleration = 0 // acceleration should not be negative
       } else {
         acceleration = physics.airborneAcceleration
