@@ -44,7 +44,7 @@ function Physics (mcData, world) {
 
   const physics = {
     gravity: 0.08, // blocks/tick^2 https://minecraft.gamepedia.com/Entity#Motion_of_entities
-    airdrag: Math.fround(1 - 0.02), // actually (1 - drag)
+    airdrag: 0.9800000190734863, // actually (1 - drag)
     yawSpeed: 3.0,
     pitchSpeed: 3.0,
     playerSpeed: 0.1,
@@ -457,6 +457,7 @@ function Physics (mcData, world) {
 
       applyHeading(entity, strafe, forward, acceleration)
       moveEntity(entity, world, vel.x, vel.y, vel.z)
+      
       vel.y *= inertia
       vel.y -= (entity.isInWater ? physics.waterGravity : physics.lavaGravity) * gravityMultiplier
       vel.x *= horizontalInertia
@@ -514,6 +515,7 @@ function Physics (mcData, world) {
         if (entity.attributes && entity.attributes[physics.movementSpeedAttribute]) {
           // Use server-side player attributes
           playerSpeedAttribute = entity.attributes[physics.movementSpeedAttribute]
+          playerSpeedAttribute.value = 0.1;
         } else {
           // Create an attribute if the player does not have it
           playerSpeedAttribute = attribute.createAttributeValue(physics.playerSpeed)
@@ -532,8 +534,8 @@ function Physics (mcData, world) {
         }
         // Calculate what the speed is (0.1 if no modification)
         const attributeSpeed = attribute.getAttributeValue(playerSpeedAttribute)
-        inertia = (blockSlipperiness[blockUnder.type] || physics.defaultSlipperiness) * 0.91
-        acceleration = attributeSpeed * (0.1627714 / (inertia * inertia * inertia))
+        inertia = (blockSlipperiness[blockUnder.type] || physics.defaultSlipperiness) * 0.91;
+        acceleration = attributeSpeed * (0.16277136 / (inertia * inertia * inertia));
         if (acceleration < 0) acceleration = 0 // acceleration should not be negative
       } else {
         acceleration = physics.airborneAcceleration
@@ -690,7 +692,7 @@ function Physics (mcData, world) {
         vel.y += 0.04
       } else if (entity.onGround && entity.jumpTicks === 0) {
         const blockBelow = world.getBlock(entity.pos.floored().offset(0, -0.5, 0))
-        vel.y = Math.fround(0.42) * ((blockBelow && blockBelow.type === honeyblockId) ? physics.honeyblockJumpSpeed : 1)
+        vel.y = 0.42 * ((blockBelow && blockBelow.type === honeyblockId) ? physics.honeyblockJumpSpeed : 1)
         if (entity.jumpBoost > 0) {
           vel.y += 0.1 * entity.jumpBoost
         }
