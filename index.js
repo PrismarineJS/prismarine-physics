@@ -447,7 +447,7 @@ function Physics (mcData, world) {
     if (climbableTrapdoorFeature && trapdoorIds.has(block.type)) {
       const blockBelow = world.getBlock(pos.offset(0, -1, 0))
       if (blockBelow.type !== ladderId) { return false } // condition 1.
-      const blockProperties = block.getProperties()
+      const blockProperties = block._properties
       if (!blockProperties.open) { return false } // condition 2.
       if (blockProperties.facing !== blockBelow.getProperties().facing) { return false } // condition 3
       return true
