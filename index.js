@@ -115,7 +115,7 @@ function Physics (mcData, world) {
           if (block) {
             const blockPos = block.position
             for (const shape of block.shapes) {
-              const blockBB = new AABB(shape[0], shape[1], shape[2], shape[3], shape[4], shape[5])
+              const blockBB = new AABB(shape[0] - 0.01, shape[1], shape[2] - 0.01, shape[3] + 0.01, shape[4], shape[5] + 0.01)
               blockBB.offset(blockPos.x, blockPos.y, blockPos.z)
               surroundingBBs.push(blockBB)
             }
