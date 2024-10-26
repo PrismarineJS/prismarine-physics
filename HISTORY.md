@@ -1,5 +1,8 @@
 ## History
 
+### 1.9.0
+* [add 1.21 to proportionalliquidgravity setting (#117)](https://github.com/PrismarineJS/prismarine-physics/commit/4986c8e395773e770d461db06bce38f9faed0757) (thanks @Madlykeanu)
+
 ### 1.8.0
 * [Add support for elytra and rockets (#106)](https://github.com/PrismarineJS/prismarine-physics/commit/04351b4c5fa73e9eb7ca79b88c63f5bef59b5645) (thanks @lkwilson)
 * [Fix "flowing" liquids not being included (#105)](https://github.com/PrismarineJS/prismarine-physics/commit/1f95aaad67684b381aedeb0a990e93dbb03025d0) (thanks @Flonja)

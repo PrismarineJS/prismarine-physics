@@ -1,6 +1,6 @@
 {
   "name": "prismarine-physics",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Provide the physics engine for minecraft entities",
   "main": "index.js",
   "directories": {
