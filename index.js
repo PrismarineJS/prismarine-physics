@@ -592,7 +592,7 @@ function Physics (mcData, world) {
   function getRenderedDepth (block) {
     if (!block) return -1
     if (waterLike.has(block.type)) return 0
-    if (block.getProperties().waterlogged) return 0
+    if (block.isWaterlogged) return 0
     if (!waterIds.includes(block.type)) return -1
     const meta = block.metadata
     return meta >= 8 ? 0 : meta
@@ -640,7 +640,7 @@ function Physics (mcData, world) {
       for (cursor.z = Math.floor(bb.minZ); cursor.z <= Math.floor(bb.maxZ); cursor.z++) {
         for (cursor.x = Math.floor(bb.minX); cursor.x <= Math.floor(bb.maxX); cursor.x++) {
           const block = world.getBlock(cursor)
-          if (block && (waterIds.includes(block.type) || waterLike.has(block.type) || block.getProperties().waterlogged)) {
+          if (block && (waterIds.includes(block.type) || waterLike.has(block.type) || block.isWaterlogged)) {
             const waterLevel = cursor.y + 1 - getLiquidHeightPcent(block)
             if (Math.ceil(bb.maxY) >= waterLevel) waterBlocks.push(block)
           }
