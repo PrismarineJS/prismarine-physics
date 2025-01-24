@@ -29,7 +29,7 @@
   "homepage": "https://github.com/PrismarineJS/prismarine-physics#readme",
   "devDependencies": {
     "expect": "^27.3.1",
-    "mocha": "^10.0.0",
+    "mocha": "^11.0.1",
     "prismarine-block": "^1.7.3",
     "prismarine-physics": "file:./",
     "standard": "^17.0.0"
