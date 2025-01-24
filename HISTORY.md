@@ -1,5 +1,10 @@
 ## History
 
+### 1.10.0
+* [Fix `.isOnLadder()` condition (#111)](https://github.com/PrismarineJS/prismarine-physics/commit/03b2e447b7f867257b8e50170439be8ca8e51743) (thanks @szdytom)
+* [Bump mocha from 10.8.2 to 11.0.1 (#119)](https://github.com/PrismarineJS/prismarine-physics/commit/4a1d37c91915522d824b2d4170fce135926ce6e5) (thanks @dependabot[bot])
+* [Use new block.isWaterlogged over reading block properties (#120)](https://github.com/PrismarineJS/prismarine-physics/commit/5cbba64ec457c6b5fa18002e57b87c8c584abb94) (thanks @extremeheat)
+
 ### 1.9.0
 * [add 1.21 to proportionalliquidgravity setting (#117)](https://github.com/PrismarineJS/prismarine-physics/commit/4986c8e395773e770d461db06bce38f9faed0757) (thanks @Madlykeanu)
 
