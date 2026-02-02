@@ -121,15 +121,25 @@ function Physics (mcData, world) {
     pos.z = bb.minZ + physics.playerHalfWidth
   }
 
-  function getSurroundingBBs (world, queryBB) {
+  function getSurroundingBBs (world, bb) {
     const surroundingBBs = []
     const cursor = new Vec3(0, 0, 0)
-    for (cursor.y = Math.floor(queryBB.minY) - 1; cursor.y <= Math.floor(queryBB.maxY); cursor.y++) {
-      for (cursor.z = Math.floor(queryBB.minZ); cursor.z <= Math.floor(queryBB.maxZ); cursor.z++) {
-        for (cursor.x = Math.floor(queryBB.minX); cursor.x <= Math.floor(queryBB.maxX); cursor.x++) {
+    for (cursor.y = Math.floor(bb.minY); cursor.y <= Math.floor(bb.maxY); cursor.y++) {
+      for (cursor.z = Math.floor(bb.minZ); cursor.z <= Math.floor(bb.maxZ); cursor.z++) {
+        for (cursor.x = Math.floor(bb.minX); cursor.x <= Math.floor(bb.maxX); cursor.x++) {
           const block = world.getBlock(cursor)
           if (block) {
             const blockPos = block.position
+
+            if (block.name && block.name.includes('door')) {
+              const state = block.metadata || 0
+              const isOpen = (state & 0b10000) !== 0
+
+              if (isOpen) {
+                continue
+              }
+            }
+
             for (const shape of block.shapes) {
               const blockBB = new AABB(shape[0], shape[1], shape[2], shape[3], shape[4], shape[5])
               blockBB.offset(blockPos.x, blockPos.y, blockPos.z)
