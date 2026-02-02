@@ -132,8 +132,16 @@ function Physics (mcData, world) {
             const blockPos = block.position
 
             if (block.name && block.name.includes('door')) {
-              const state = block.metadata || 0
-              const isOpen = (state & 0b10000) !== 0
+              let isOpen = false
+
+              // Post-flattening (1.13+): Check block properties first
+              if (block.properties && block.properties.open !== undefined) {
+                isOpen = block.properties.open
+              // Pre-flattening (1.12 and earlier): Fall back to metadata
+              } else {
+                const state = block.metadata || 0
+                isOpen = (state & 0b10000) !== 0 // Use existing bit mask
+              }
 
               if (isOpen) {
                 continue
