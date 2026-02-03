@@ -131,9 +131,8 @@ function Physics (mcData, world) {
             const blockPos = block.position
 
             if (block.name && block.name.includes('door')) {
-              const blockProperties = block._properties
-              const isOpen = blockProperties && blockProperties.open !== undefined ? blockProperties.open : (block.metadata || 0 & 0b10000) !== 0
-              if (isOpen) { continue }
+              // Use the correctly parsed door state from mineflayer's blockAt function
+              if (block.isOpen) { continue }
             }
 
             for (const shape of block.shapes) {
