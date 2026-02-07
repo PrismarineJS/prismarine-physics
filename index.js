@@ -217,13 +217,21 @@ function Physics (mcData, world) {
     }
     playerBB.offset(0, dy, 0)
 
+    // allow for block colission sliding on X axis
     for (const blockBB of surroundingBBs) {
+      const oldDx = dx
       dx = blockBB.computeOffsetX(playerBB, dx)
+      if (oldDx !== dx) {
+      }
     }
     playerBB.offset(dx, 0, 0)
 
+    // allow for block colission sliding on Z axis
     for (const blockBB of surroundingBBs) {
+      const oldDz = dz
       dz = blockBB.computeOffsetZ(playerBB, dz)
+      if (oldDz !== dz) {
+      }
     }
     playerBB.offset(0, 0, dz)
 
