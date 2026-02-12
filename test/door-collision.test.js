@@ -158,4 +158,46 @@ describe('Door collision tests', () => {
       expect(physics.config.enableCollisionSliding).toBe(false)
     })
   })
+
+  describe('Configuration validation', () => {
+    it('should handle boolean conversion correctly', () => {
+      const world = createWorldWithDoor()
+
+      // Test various truthy values
+      const physics1 = Physics(mcData, world, { allowOpenDoorPassage: true })
+      expect(physics1.config.allowOpenDoorPassage).toBe(true)
+
+      const physics2 = Physics(mcData, world, { allowOpenDoorPassage: 1 })
+      expect(physics2.config.allowOpenDoorPassage).toBe(true)
+
+      const physics3 = Physics(mcData, world, { allowOpenDoorPassage: 'yes' })
+      expect(physics3.config.allowOpenDoorPassage).toBe(true)
+
+      // Test various falsy values
+      const physics4 = Physics(mcData, world, { allowOpenDoorPassage: false })
+      expect(physics4.config.allowOpenDoorPassage).toBe(false)
+
+      const physics5 = Physics(mcData, world, { allowOpenDoorPassage: 0 })
+      expect(physics5.config.allowOpenDoorPassage).toBe(false)
+
+      const physics6 = Physics(mcData, world, { allowOpenDoorPassage: null })
+      expect(physics6.config.allowOpenDoorPassage).toBe(false)
+
+      const physics7 = Physics(mcData, world, { allowOpenDoorPassage: undefined })
+      expect(physics7.config.allowOpenDoorPassage).toBe(false)
+    })
+
+    it('should ignore invalid properties', () => {
+      const world = createWorldWithDoor()
+      const physics = Physics(mcData, world, {
+        allowOpenDoorPassage: true,
+        invalidProperty: true,
+        randomOption: 'should be ignored'
+      })
+
+      expect(physics.config.allowOpenDoorPassage).toBe(true)
+      expect(physics.config.invalidProperty).toBeUndefined()
+      expect(physics.config.randomOption).toBeUndefined()
+    })
+  })
 })
