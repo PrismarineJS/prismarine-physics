@@ -8,9 +8,16 @@ function makeSupportFeature (mcData) {
   return feature => features.some(({ name, versions }) => name === feature && versions.includes(mcData.version.majorVersion))
 }
 
-function Physics (mcData, world) {
+function Physics (mcData, world, options = {}) {
   const supportFeature = makeSupportFeature(mcData)
   const blocksByName = mcData.blocksByName
+
+  // Configuration options with backward compatibility defaults
+  const config = {
+    allowOpenDoorPassage: false, // Default to current behavior (doors block movement)
+    enableCollisionSliding: false, // For X/Z axis sliding feature
+    ...options // Allow users to override defaults
+  }
 
   // Block Slipperiness
   // https://www.mcpk.wiki/w/index.php?title=Slipperiness
@@ -35,6 +42,29 @@ function Physics (mcData, world) {
   const ladderId = blocksByName.ladder.id
   const vineId = blocksByName.vine.id
   const scaffoldingId = blocksByName.scaffolding ? blocksByName.scaffolding.id : -1 // 1.14+
+
+  // Door block IDs for proper detection
+  const doorBlockIds = new Set([
+    blocksByName.oak_door?.id,
+    blocksByName.spruce_door?.id,
+    blocksByName.birch_door?.id,
+    blocksByName.jungle_door?.id,
+    blocksByName.acacia_door?.id,
+    blocksByName.dark_oak_door?.id,
+    blocksByName.crimson_door?.id,
+    blocksByName.warped_door?.id,
+    blocksByName.mangrove_door?.id,
+    blocksByName.cherry_door?.id,
+    blocksByName.bamboo_door?.id,
+    blocksByName.copper_door?.id,
+    blocksByName.exposed_copper_door?.id,
+    blocksByName.weathered_copper_door?.id,
+    blocksByName.oxidized_copper_door?.id,
+    blocksByName.waxed_copper_door?.id,
+    blocksByName.waxed_exposed_copper_door?.id,
+    blocksByName.waxed_weathered_copper_door?.id,
+    blocksByName.waxed_oxidized_copper_door?.id
+  ].filter(id => id !== undefined))
 
   // NOTE: Copper trapdoors is coming in 1.21.
   const trapdoorIds = new Set()
@@ -97,7 +127,8 @@ function Physics (mcData, world) {
     },
     slowFalling: 0.125,
     movementSpeedAttribute: mcData.attributesByName.movementSpeed.resource,
-    sprintingUUID: '662a6b8d-da3e-4c1c-8813-96ea6097278d' // SPEED_MODIFIER_SPRINTING_UUID is from LivingEntity.java
+    sprintingUUID: '662a6b8d-da3e-4c1c-8813-96ea6097278d', // SPEED_MODIFIER_SPRINTING_UUID is from LivingEntity.java
+    config // Store configuration for use in collision detection
   }
 
   if (supportFeature('independentLiquidGravity')) {
@@ -131,9 +162,9 @@ function Physics (mcData, world) {
           if (block) {
             const blockPos = block.position
 
-            if (block.name && block.name.includes('door')) {
-              // Use the correctly parsed door state from mineflayer's blockAt function
-              if (block.isOpen) { continue }
+            // Only skip door collisions if feature is enabled and door is open
+            if (physics.config.allowOpenDoorPassage && doorBlockIds.has(block.type) && block.isOpen) {
+              continue
             }
 
             for (const shape of block.shapes) {
@@ -218,20 +249,24 @@ function Physics (mcData, world) {
     }
     playerBB.offset(0, dy, 0)
 
-    // allow for block colission sliding on X axis
+    // allow for block collision sliding on X axis
     for (const blockBB of surroundingBBs) {
       const oldDx = dx
       dx = blockBB.computeOffsetX(playerBB, dx)
-      if (oldDx !== dx) {
+      if (physics.config.enableCollisionSliding && oldDx !== dx) {
+        // TODO: Implement collision sliding logic
+        // This could include friction calculation, velocity adjustment, etc.
       }
     }
     playerBB.offset(dx, 0, 0)
 
-    // allow for block colission sliding on Z axis
+    // allow for block collision sliding on Z axis
     for (const blockBB of surroundingBBs) {
       const oldDz = dz
       dz = blockBB.computeOffsetZ(playerBB, dz)
-      if (oldDz !== dz) {
+      if (physics.config.enableCollisionSliding && oldDz !== dz) {
+        // TODO: Implement collision sliding logic
+        // This could include friction calculation, velocity adjustment, etc.
       }
     }
     playerBB.offset(0, 0, dz)
