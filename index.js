@@ -12,11 +12,10 @@ function Physics (mcData, world, options = {}) {
   const supportFeature = makeSupportFeature(mcData)
   const blocksByName = mcData.blocksByName
 
-  // Configuration options with backward compatibility defaults
+  // Configuration options with validation and defaults
   const config = {
-    allowOpenDoorPassage: false, // Default to current behavior (doors block movement)
-    enableCollisionSliding: false, // For X/Z axis sliding feature
-    ...options // Allow users to override defaults
+    allowOpenDoorPassage: Boolean(options.allowOpenDoorPassage),
+    enableCollisionSliding: Boolean(options.enableCollisionSliding)
   }
 
   // Block Slipperiness
