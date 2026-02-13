@@ -154,6 +154,7 @@ function Physics (mcData, world, options = {}) {
   function getSurroundingBBs (world, queryBB) {
     const surroundingBBs = []
     const cursor = new Vec3(0, 0, 0)
+
     for (cursor.y = Math.floor(queryBB.minY) - 1; cursor.y <= Math.floor(queryBB.maxY); cursor.y++) {
       for (cursor.z = Math.floor(queryBB.minZ); cursor.z <= Math.floor(queryBB.maxZ); cursor.z++) {
         for (cursor.x = Math.floor(queryBB.minX); cursor.x <= Math.floor(queryBB.maxX); cursor.x++) {
@@ -161,9 +162,23 @@ function Physics (mcData, world, options = {}) {
           if (block) {
             const blockPos = block.position
 
-            // Only skip door collisions if feature is enabled and door is open
-            if (physics.config.allowOpenDoorPassage && doorBlockIds.has(block.type) && block.isOpen) {
-              continue
+            // Layered architecture: Use mineflayer's parsed data when available, fall back to metadata for pure prismarine
+            if (physics.config.allowOpenDoorPassage && doorBlockIds.has(block.type)) {
+              let isOpen = false
+
+              // Layer 1: Use mineflayer's parsed door state (preferred)
+              if (block.isOpen !== undefined) {
+                isOpen = block.isOpen
+              // Layer 2: Use mineflayer's block properties (fallback)
+              } else if (block._properties && block._properties.open !== undefined) {
+                isOpen = block._properties.open
+              // Layer 3: Use raw metadata (pure prismarine fallback)
+              } else {
+                const state = block.metadata || 0
+                isOpen = (state & 0b10000) !== 0
+              }
+
+              if (isOpen) { continue }
             }
 
             for (const shape of block.shapes) {
@@ -253,8 +268,35 @@ function Physics (mcData, world, options = {}) {
       const oldDx = dx
       dx = blockBB.computeOffsetX(playerBB, dx)
       if (physics.config.enableCollisionSliding && oldDx !== dx) {
-        // TODO: Implement collision sliding logic
-        // This could include friction calculation, velocity adjustment, etc.
+        // Calculate sliding angle and apply friction
+        const collisionNormal = new Vec3(oldDx > 0 ? 1 : -1, 0, 0)
+        const movementVector = new Vec3(oldDx, dy, dz)
+
+        // Calculate angle between movement and collision normal
+        const dotProduct = movementVector.dot(collisionNormal)
+        const movementMagnitude = Math.sqrt(oldDx * oldDx + dy * dy + dz * dz)
+        const normalMagnitude = collisionNormal.length()
+
+        if (movementMagnitude > 0 && normalMagnitude > 0) {
+          const cosAngle = Math.abs(dotProduct) / (movementMagnitude * normalMagnitude)
+          const angle = Math.acos(Math.min(1, Math.max(-1, cosAngle)))
+
+          // Convert angle to degrees (0 = head-on, 90 = parallel)
+          const angleDegrees = angle * (180 / Math.PI)
+
+          // Apply sliding based on angle with exponential scaling:
+          // - 89° (nearly parallel): ~95% normal speed
+          // - 45° (diagonal): ~50% normal speed
+          // - 10° (shallow): ~5% normal speed
+          // - 0° (head-on): 0% speed (full stop)
+          const speedMultiplier = Math.pow(angleDegrees / 90, 2) // Exponential scaling
+
+          // Apply sliding to remaining movement (Z axis primarily)
+          if (speedMultiplier > 0.05) { // Only slide if angle provides meaningful movement
+            dz *= speedMultiplier
+            dy *= speedMultiplier * 0.8 // Slightly reduce vertical component
+          }
+        }
       }
     }
     playerBB.offset(dx, 0, 0)
@@ -264,8 +306,35 @@ function Physics (mcData, world, options = {}) {
       const oldDz = dz
       dz = blockBB.computeOffsetZ(playerBB, dz)
       if (physics.config.enableCollisionSliding && oldDz !== dz) {
-        // TODO: Implement collision sliding logic
-        // This could include friction calculation, velocity adjustment, etc.
+        // Calculate sliding angle and apply friction
+        const collisionNormal = new Vec3(0, 0, oldDz > 0 ? 1 : -1)
+        const movementVector = new Vec3(dx, dy, oldDz)
+
+        // Calculate angle between movement and collision normal
+        const dotProduct = movementVector.dot(collisionNormal)
+        const movementMagnitude = Math.sqrt(dx * dx + dy * dy + oldDz * oldDz)
+        const normalMagnitude = collisionNormal.length()
+
+        if (movementMagnitude > 0 && normalMagnitude > 0) {
+          const cosAngle = Math.abs(dotProduct) / (movementMagnitude * normalMagnitude)
+          const angle = Math.acos(Math.min(1, Math.max(-1, cosAngle)))
+
+          // Convert angle to degrees (0 = head-on, 90 = parallel)
+          const angleDegrees = angle * (180 / Math.PI)
+
+          // Apply sliding based on angle with exponential scaling:
+          // - 89° (nearly parallel): ~95% normal speed
+          // - 45° (diagonal): ~50% normal speed
+          // - 10° (shallow): ~5% normal speed
+          // - 0° (head-on): 0% speed (full stop)
+          const speedMultiplier = Math.pow(angleDegrees / 90, 2) // Exponential scaling
+
+          // Apply sliding to remaining movement (X axis primarily)
+          if (speedMultiplier > 0.05) { // Only slide if angle provides meaningful movement
+            dx *= speedMultiplier
+            dy *= speedMultiplier * 0.8 // Slightly reduce vertical component
+          }
+        }
       }
     }
     playerBB.offset(0, 0, dz)
