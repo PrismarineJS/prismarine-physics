@@ -162,7 +162,10 @@ function Physics (mcData, world, options = {}) {
           if (block) {
             const blockPos = block.position
 
-            // Layered architecture: Use mineflayer's parsed data when available, fall back to metadata for pure prismarine
+            // Default behavior: doors are solid blocks (master branch behavior)
+            let shouldBlockDoor = true
+
+            // Only change door behavior if feature is explicitly enabled
             if (physics.config.allowOpenDoorPassage && doorBlockIds.has(block.type)) {
               let isOpen = false
 
@@ -178,13 +181,17 @@ function Physics (mcData, world, options = {}) {
                 isOpen = (state & 0b10000) !== 0
               }
 
-              if (isOpen) { continue }
+              // If door is open and feature is enabled, don't block it
+              if (isOpen) { shouldBlockDoor = false }
             }
 
-            for (const shape of block.shapes) {
-              const blockBB = new AABB(shape[0], shape[1], shape[2], shape[3], shape[4], shape[5])
-              blockBB.offset(blockPos.x, blockPos.y, blockPos.z)
-              surroundingBBs.push(blockBB)
+            // Apply collision based on final decision
+            if (shouldBlockDoor) {
+              for (const shape of block.shapes) {
+                const blockBB = new AABB(shape[0], shape[1], shape[2], shape[3], shape[4], shape[5])
+                blockBB.offset(blockPos.x, blockPos.y, blockPos.z)
+                surroundingBBs.push(blockBB)
+              }
             }
           }
         }
