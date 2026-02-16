@@ -200,10 +200,61 @@ function Physics (mcData, world, options = {}) {
     return surroundingBBs
   }
 
+  // Helper function that applies door logic consistently across all movement calculations
+  function getSurroundingBBsWithDoorLogic (world, queryBB) {
+    // If door passability is not enabled, use the original function (master branch behavior)
+    if (!physics.config.allowOpenDoorPassage) {
+      return getSurroundingBBs(world, queryBB)
+    }
+
+    // If door passability is enabled, use the enhanced logic with door handling
+    const surroundingBBs = []
+    const cursor = new Vec3(0, 0, 0)
+
+    for (cursor.y = Math.floor(queryBB.minY) - 1; cursor.y <= Math.floor(queryBB.maxY); cursor.y++) {
+      for (cursor.z = Math.floor(queryBB.minZ); cursor.z <= Math.floor(queryBB.maxZ); cursor.z++) {
+        for (cursor.x = Math.floor(queryBB.minX); cursor.x <= Math.floor(queryBB.maxX); cursor.x++) {
+          const block = world.getBlock(cursor)
+          if (block) {
+            const blockPos = block.position
+
+            // Apply door logic consistently when feature is enabled
+            if (physics.config.allowOpenDoorPassage && doorBlockIds.has(block.type)) {
+              let isOpen = false
+
+              // Layer 1: Use mineflayer's parsed door state (preferred)
+              if (block.isOpen !== undefined) {
+                isOpen = block.isOpen
+              // Layer 2: Use mineflayer's block properties (fallback)
+              } else if (block._properties && block._properties.open !== undefined) {
+                isOpen = block._properties.open
+              // Layer 3: Use raw metadata (pure prismarine fallback)
+              } else {
+                const state = block.metadata || 0
+                isOpen = (state & 0b10000) !== 0
+              }
+
+              // If door is open and feature is enabled, don't block it
+              if (isOpen) { continue }
+            }
+
+            // Apply collision for all blocks (including doors when feature is disabled or doors are closed)
+            for (const shape of block.shapes) {
+              const blockBB = new AABB(shape[0], shape[1], shape[2], shape[3], shape[4], shape[5])
+              blockBB.offset(blockPos.x, blockPos.y, blockPos.z)
+              surroundingBBs.push(blockBB)
+            }
+          }
+        }
+      }
+    }
+    return surroundingBBs
+  }
+
   physics.adjustPositionHeight = (pos) => {
     const playerBB = getPlayerBB(pos)
     const queryBB = playerBB.clone().extend(0, -1, 0)
-    const surroundingBBs = getSurroundingBBs(world, queryBB)
+    const surroundingBBs = getSurroundingBBsWithDoorLogic(world, queryBB)
 
     let dy = -1
     for (const blockBB of surroundingBBs) {
@@ -234,22 +285,23 @@ function Physics (mcData, world, options = {}) {
       const step = 0.05
 
       // In the 3 loops bellow, y offset should be -1, but that doesnt reproduce vanilla behavior.
-      for (; dx !== 0 && getSurroundingBBs(world, getPlayerBB(pos).offset(dx, 0, 0)).length === 0; oldVelX = dx) {
+      for (; dx !== 0 && getSurroundingBBsWithDoorLogic(world, getPlayerBB(pos).offset(dx, 0, 0)).length === 0; oldVelX = dx) {
         if (dx < step && dx >= -step) dx = 0
         else if (dx > 0) dx -= step
         else dx += step
       }
 
-      for (; dz !== 0 && getSurroundingBBs(world, getPlayerBB(pos).offset(0, 0, dz)).length === 0; oldVelZ = dz) {
+      for (; dz !== 0 && getSurroundingBBsWithDoorLogic(world, getPlayerBB(pos).offset(0, 0, dz)).length === 0; oldVelZ = dz) {
         if (dz < step && dz >= -step) dz = 0
         else if (dz > 0) dz -= step
         else dz += step
       }
 
-      while (dx !== 0 && dz !== 0 && getSurroundingBBs(world, getPlayerBB(pos).offset(dx, 0, dz)).length === 0) {
+      while (dx !== 0 && dz !== 0 && getSurroundingBBsWithDoorLogic(world, getPlayerBB(pos).offset(dx, 0, dz)).length === 0) {
         if (dx < step && dx >= -step) dx = 0
         else if (dx > 0) dx -= step
-        else dx += step
+        else if (dx < 0) dx += step
+        else dx -= step
 
         if (dz < step && dz >= -step) dz = 0
         else if (dz > 0) dz -= step
@@ -262,7 +314,7 @@ function Physics (mcData, world, options = {}) {
 
     let playerBB = getPlayerBB(pos)
     const queryBB = playerBB.clone().extend(dx, dy, dz)
-    const surroundingBBs = getSurroundingBBs(world, queryBB)
+    const surroundingBBs = getSurroundingBBsWithDoorLogic(world, queryBB)
     const oldBB = playerBB.clone()
 
     for (const blockBB of surroundingBBs) {
@@ -357,7 +409,7 @@ function Physics (mcData, world, options = {}) {
 
       dy = physics.stepHeight
       const queryBB = oldBB.clone().extend(oldVelX, dy, oldVelZ)
-      const surroundingBBs = getSurroundingBBs(world, queryBB)
+      const surroundingBBs = getSurroundingBBsWithDoorLogic(world, queryBB)
 
       const BB1 = oldBB.clone()
       const BB2 = oldBB.clone()
@@ -584,7 +636,7 @@ function Physics (mcData, world, options = {}) {
 
   function doesNotCollide (world, pos) {
     const pBB = getPlayerBB(pos)
-    return !getSurroundingBBs(world, pBB).some(x => pBB.intersects(x)) && getWaterInBB(world, pBB).length === 0
+    return !getSurroundingBBsWithDoorLogic(world, pBB).some(x => pBB.intersects(x)) && getWaterInBB(world, pBB).length === 0
   }
 
   function moveEntityWithHeading (entity, world, strafe, forward) {
