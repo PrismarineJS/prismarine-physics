@@ -518,8 +518,8 @@ function Physics (mcData, world) {
         vel.z += lookDir.z * movingDownSpeedModifier / cosPitch
       }
 
-      if (pitch < 0.0 && cosPitch > 0.0) {
-        const lookDownSpeedModifier = horizontalSpeed * (-sinPitch) * 0.04
+      if (pitch > 0.0 && cosPitch > 0.0) {
+        const lookDownSpeedModifier = horizontalSpeed * sinPitch * 0.04
         vel.x += -lookDir.x * lookDownSpeedModifier / cosPitch
         vel.y += lookDownSpeedModifier * 3.2
         vel.z += -lookDir.z * lookDownSpeedModifier / cosPitch

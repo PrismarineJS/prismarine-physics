@@ -490,8 +490,8 @@ describe('Elytra tests', () => {
     expect(webPlayer.entity.position.y).toBeGreaterThan(149)
 
     // elytra player should be far away and much lower
-    expect(airPlayer.entity.position.x).toBeGreaterThan(200)
-    expect(airPlayer.entity.position.y).toBeLessThan(110)
+    expect(airPlayer.entity.position.x).toBeGreaterThan(60)
+    expect(airPlayer.entity.position.y).toBeLessThan(135)
   })
 
   it('can hit a wall', () => {
