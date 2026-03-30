@@ -1,5 +1,13 @@
 ## History
 
+### 1.11.0
+* [Update CI to Node 24 (#129)](https://github.com/PrismarineJS/prismarine-physics/commit/7be0b38f547f186d41fc9cda8841cacf8f2fd80a) (thanks @rom1504)
+* [Fix incorrect elytra physics (#123)](https://github.com/PrismarineJS/prismarine-physics/commit/be7f91bb4ec85e1b1f4ccfa1a33607e9cdfdf92c) (thanks @BossFlea)
+* [fix: add scaffolding to climbable blocks and 1.21 to climbUsingJump (#126)](https://github.com/PrismarineJS/prismarine-physics/commit/06543978564247457c6ac3255c666d64a99c4de4) (thanks @jerry1091)
+* [Fix publish condition for npm-publish v4 (#128)](https://github.com/PrismarineJS/prismarine-physics/commit/45d7e992c58e0f60c18eee633adad783c3e64e0f) (thanks @rom1504)
+* [Switch to trusted publishing via OIDC (#127)](https://github.com/PrismarineJS/prismarine-physics/commit/f34e1d48ece5329d443c58624e2fb55ba3d5cc03) (thanks @rom1504)
+* [node 22 (#122)](https://github.com/PrismarineJS/prismarine-physics/commit/37d8d0b612de347b2e132e270642fec108d4f2ec) (thanks @rom1504)
+
 ### 1.10.0
 * [Fix `.isOnLadder()` condition (#111)](https://github.com/PrismarineJS/prismarine-physics/commit/03b2e447b7f867257b8e50170439be8ca8e51743) (thanks @szdytom)
 * [Bump mocha from 10.8.2 to 11.0.1 (#119)](https://github.com/PrismarineJS/prismarine-physics/commit/4a1d37c91915522d824b2d4170fce135926ce6e5) (thanks @dependabot[bot])
