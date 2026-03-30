@@ -322,38 +322,32 @@ function Physics (mcData, world, options = {}) {
     }
     playerBB.offset(0, dy, 0)
 
+    let slidingFrictionX = 1.0
+    let slidingFrictionZ = 1.0
+
     // allow for block collision sliding on X axis
     for (const blockBB of surroundingBBs) {
       const oldDx = dx
       dx = blockBB.computeOffsetX(playerBB, dx)
       if (physics.config.enableCollisionSliding && oldDx !== dx) {
-        // Calculate sliding angle and apply friction
-        const collisionNormal = new Vec3(oldDx > 0 ? 1 : -1, 0, 0)
-        const movementVector = new Vec3(oldDx, dy, dz)
+        // Calculate sliding angle and apply friction to Z movement
+        const movementMagnitude = Math.sqrt(oldDx * oldDx + dz * dz)
 
-        // Calculate angle between movement and collision normal
-        const dotProduct = movementVector.dot(collisionNormal)
-        const movementMagnitude = Math.sqrt(oldDx * oldDx + dy * dy + dz * dz)
-        const normalMagnitude = collisionNormal.length()
-
-        if (movementMagnitude > 0 && normalMagnitude > 0) {
-          const cosAngle = Math.abs(dotProduct) / (movementMagnitude * normalMagnitude)
-          const angle = Math.acos(Math.min(1, Math.max(-1, cosAngle)))
-
-          // Convert angle to degrees (0 = head-on, 90 = parallel)
-          const angleDegrees = angle * (180 / Math.PI)
+        if (movementMagnitude > 0) {
+          const cosAngle = Math.abs(oldDx) / movementMagnitude
+          const angleDegrees = Math.acos(Math.min(1, Math.max(-1, cosAngle))) * (180 / Math.PI)
 
           // Apply sliding based on angle with exponential scaling:
           // - 89° (nearly parallel): ~95% normal speed
           // - 45° (diagonal): ~50% normal speed
           // - 10° (shallow): ~5% normal speed
           // - 0° (head-on): 0% speed (full stop)
-          const speedMultiplier = Math.pow(angleDegrees / 90, 2) // Exponential scaling
+          const speedMultiplier = Math.pow(angleDegrees / 90, 2)
 
-          // Apply sliding to remaining movement (Z axis primarily)
-          if (speedMultiplier > 0.05) { // Only slide if angle provides meaningful movement
-            dz *= speedMultiplier
-            dy *= speedMultiplier * 0.8 // Slightly reduce vertical component
+          if (speedMultiplier > 0.05) {
+            slidingFrictionZ = Math.min(slidingFrictionZ, speedMultiplier)
+          } else {
+            slidingFrictionZ = 0
           }
         }
       }
@@ -365,33 +359,19 @@ function Physics (mcData, world, options = {}) {
       const oldDz = dz
       dz = blockBB.computeOffsetZ(playerBB, dz)
       if (physics.config.enableCollisionSliding && oldDz !== dz) {
-        // Calculate sliding angle and apply friction
-        const collisionNormal = new Vec3(0, 0, oldDz > 0 ? 1 : -1)
-        const movementVector = new Vec3(dx, dy, oldDz)
+        // Calculate sliding angle and apply friction to X movement
+        const movementMagnitude = Math.sqrt(dx * dx + oldDz * oldDz)
 
-        // Calculate angle between movement and collision normal
-        const dotProduct = movementVector.dot(collisionNormal)
-        const movementMagnitude = Math.sqrt(dx * dx + dy * dy + oldDz * oldDz)
-        const normalMagnitude = collisionNormal.length()
+        if (movementMagnitude > 0) {
+          const cosAngle = Math.abs(oldDz) / movementMagnitude
+          const angleDegrees = Math.acos(Math.min(1, Math.max(-1, cosAngle))) * (180 / Math.PI)
 
-        if (movementMagnitude > 0 && normalMagnitude > 0) {
-          const cosAngle = Math.abs(dotProduct) / (movementMagnitude * normalMagnitude)
-          const angle = Math.acos(Math.min(1, Math.max(-1, cosAngle)))
+          const speedMultiplier = Math.pow(angleDegrees / 90, 2)
 
-          // Convert angle to degrees (0 = head-on, 90 = parallel)
-          const angleDegrees = angle * (180 / Math.PI)
-
-          // Apply sliding based on angle with exponential scaling:
-          // - 89° (nearly parallel): ~95% normal speed
-          // - 45° (diagonal): ~50% normal speed
-          // - 10° (shallow): ~5% normal speed
-          // - 0° (head-on): 0% speed (full stop)
-          const speedMultiplier = Math.pow(angleDegrees / 90, 2) // Exponential scaling
-
-          // Apply sliding to remaining movement (X axis primarily)
-          if (speedMultiplier > 0.05) { // Only slide if angle provides meaningful movement
-            dx *= speedMultiplier
-            dy *= speedMultiplier * 0.8 // Slightly reduce vertical component
+          if (speedMultiplier > 0.05) {
+            slidingFrictionX = Math.min(slidingFrictionX, speedMultiplier)
+          } else {
+            slidingFrictionX = 0
           }
         }
       }
@@ -479,7 +459,11 @@ function Physics (mcData, world, options = {}) {
     const blockAtFeet = world.getBlock(pos.offset(0, -0.2, 0))
 
     if (dx !== oldVelX) vel.x = 0
+    else if (slidingFrictionX < 1.0) vel.x *= slidingFrictionX
+
     if (dz !== oldVelZ) vel.z = 0
+    else if (slidingFrictionZ < 1.0) vel.z *= slidingFrictionZ
+
     if (dy !== oldVelY) {
       if (blockAtFeet && blockAtFeet.type === slimeBlockId && !entity.control.sneak) {
         vel.y = -vel.y
