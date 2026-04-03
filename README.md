@@ -55,7 +55,20 @@ while (!player.entity.onGround) {
 }
 ```
 
-See `examples/` for more.
+### Options
+
+The Physics constructor accepts an optional `options` object for additional features:
+
+```js
+const physics = Physics(mcData, world, {
+  allowOpenDoorPassage: true, // Allow movement through open doors
+  enableCollisionSliding: true // Enable realistic collision sliding along blocks
+})
+```
+
+See `examples/` for more:
+- `basic.js` - Standalone physics simulation
+- `basic_door_example.js` - Opt-In Passabe block for Door blocks
 
 
 ## API

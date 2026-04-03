@@ -8,9 +8,15 @@ function makeSupportFeature (mcData) {
   return feature => features.some(({ name, versions }) => name === feature && versions.includes(mcData.version.majorVersion))
 }
 
-function Physics (mcData, world) {
+function Physics (mcData, world, options = {}) {
   const supportFeature = makeSupportFeature(mcData)
   const blocksByName = mcData.blocksByName
+
+  // Configuration options with validation and defaults
+  const config = {
+    allowOpenDoorPassage: Boolean(options.allowOpenDoorPassage),
+    enableCollisionSliding: Boolean(options.enableCollisionSliding)
+  }
 
   // Block Slipperiness
   // https://www.mcpk.wiki/w/index.php?title=Slipperiness
@@ -35,6 +41,29 @@ function Physics (mcData, world) {
   const ladderId = blocksByName.ladder.id
   const vineId = blocksByName.vine.id
   const scaffoldingId = blocksByName.scaffolding ? blocksByName.scaffolding.id : -1 // 1.14+
+
+  // Door block IDs for proper detection
+  const doorBlockIds = new Set([
+    blocksByName.oak_door?.id,
+    blocksByName.spruce_door?.id,
+    blocksByName.birch_door?.id,
+    blocksByName.jungle_door?.id,
+    blocksByName.acacia_door?.id,
+    blocksByName.dark_oak_door?.id,
+    blocksByName.crimson_door?.id,
+    blocksByName.warped_door?.id,
+    blocksByName.mangrove_door?.id,
+    blocksByName.cherry_door?.id,
+    blocksByName.bamboo_door?.id,
+    blocksByName.copper_door?.id,
+    blocksByName.exposed_copper_door?.id,
+    blocksByName.weathered_copper_door?.id,
+    blocksByName.oxidized_copper_door?.id,
+    blocksByName.waxed_copper_door?.id,
+    blocksByName.waxed_exposed_copper_door?.id,
+    blocksByName.waxed_weathered_copper_door?.id,
+    blocksByName.waxed_oxidized_copper_door?.id
+  ].filter(id => id !== undefined))
 
   // NOTE: Copper trapdoors is coming in 1.21.
   const trapdoorIds = new Set()
@@ -97,7 +126,8 @@ function Physics (mcData, world) {
     },
     slowFalling: 0.125,
     movementSpeedAttribute: mcData.attributesByName.movementSpeed.resource,
-    sprintingUUID: '662a6b8d-da3e-4c1c-8813-96ea6097278d' // SPEED_MODIFIER_SPRINTING_UUID is from LivingEntity.java
+    sprintingUUID: '662a6b8d-da3e-4c1c-8813-96ea6097278d', // SPEED_MODIFIER_SPRINTING_UUID is from LivingEntity.java
+    config // Store configuration for use in collision detection
   }
 
   if (supportFeature('independentLiquidGravity')) {
@@ -124,12 +154,91 @@ function Physics (mcData, world) {
   function getSurroundingBBs (world, queryBB) {
     const surroundingBBs = []
     const cursor = new Vec3(0, 0, 0)
+
     for (cursor.y = Math.floor(queryBB.minY) - 1; cursor.y <= Math.floor(queryBB.maxY); cursor.y++) {
       for (cursor.z = Math.floor(queryBB.minZ); cursor.z <= Math.floor(queryBB.maxZ); cursor.z++) {
         for (cursor.x = Math.floor(queryBB.minX); cursor.x <= Math.floor(queryBB.maxX); cursor.x++) {
           const block = world.getBlock(cursor)
           if (block) {
             const blockPos = block.position
+
+            // Default behavior: doors are solid blocks (master branch behavior)
+            let shouldBlockDoor = true
+
+            // Only change door behavior if feature is explicitly enabled
+            if (physics.config.allowOpenDoorPassage && doorBlockIds.has(block.type)) {
+              let isOpen = false
+
+              // Layer 1: Use mineflayer's parsed door state (preferred)
+              if (block.isOpen !== undefined) {
+                isOpen = block.isOpen
+              // Layer 2: Use mineflayer's block properties (fallback)
+              } else if (block._properties && block._properties.open !== undefined) {
+                isOpen = block._properties.open
+              // Layer 3: Use raw metadata (pure prismarine fallback)
+              } else {
+                const state = block.metadata || 0
+                isOpen = (state & 0b10000) !== 0
+              }
+
+              // If door is open and feature is enabled, don't block it
+              if (isOpen) { shouldBlockDoor = false }
+            }
+
+            // Apply collision based on final decision
+            if (shouldBlockDoor) {
+              for (const shape of block.shapes) {
+                const blockBB = new AABB(shape[0], shape[1], shape[2], shape[3], shape[4], shape[5])
+                blockBB.offset(blockPos.x, blockPos.y, blockPos.z)
+                surroundingBBs.push(blockBB)
+              }
+            }
+          }
+        }
+      }
+    }
+    return surroundingBBs
+  }
+
+  // Helper function that applies door logic consistently across all movement calculations
+  function getSurroundingBBsWithDoorLogic (world, queryBB) {
+    // If door passability is not enabled, use the original function (master branch behavior)
+    if (!physics.config.allowOpenDoorPassage) {
+      return getSurroundingBBs(world, queryBB)
+    }
+
+    // If door passability is enabled, use the enhanced logic with door handling
+    const surroundingBBs = []
+    const cursor = new Vec3(0, 0, 0)
+
+    for (cursor.y = Math.floor(queryBB.minY) - 1; cursor.y <= Math.floor(queryBB.maxY); cursor.y++) {
+      for (cursor.z = Math.floor(queryBB.minZ); cursor.z <= Math.floor(queryBB.maxZ); cursor.z++) {
+        for (cursor.x = Math.floor(queryBB.minX); cursor.x <= Math.floor(queryBB.maxX); cursor.x++) {
+          const block = world.getBlock(cursor)
+          if (block) {
+            const blockPos = block.position
+
+            // Apply door logic consistently when feature is enabled
+            if (physics.config.allowOpenDoorPassage && doorBlockIds.has(block.type)) {
+              let isOpen = false
+
+              // Layer 1: Use mineflayer's parsed door state (preferred)
+              if (block.isOpen !== undefined) {
+                isOpen = block.isOpen
+              // Layer 2: Use mineflayer's block properties (fallback)
+              } else if (block._properties && block._properties.open !== undefined) {
+                isOpen = block._properties.open
+              // Layer 3: Use raw metadata (pure prismarine fallback)
+              } else {
+                const state = block.metadata || 0
+                isOpen = (state & 0b10000) !== 0
+              }
+
+              // If door is open and feature is enabled, don't block it
+              if (isOpen) { continue }
+            }
+
+            // Apply collision for all blocks (including doors when feature is disabled or doors are closed)
             for (const shape of block.shapes) {
               const blockBB = new AABB(shape[0], shape[1], shape[2], shape[3], shape[4], shape[5])
               blockBB.offset(blockPos.x, blockPos.y, blockPos.z)
@@ -145,7 +254,7 @@ function Physics (mcData, world) {
   physics.adjustPositionHeight = (pos) => {
     const playerBB = getPlayerBB(pos)
     const queryBB = playerBB.clone().extend(0, -1, 0)
-    const surroundingBBs = getSurroundingBBs(world, queryBB)
+    const surroundingBBs = getSurroundingBBsWithDoorLogic(world, queryBB)
 
     let dy = -1
     for (const blockBB of surroundingBBs) {
@@ -176,22 +285,23 @@ function Physics (mcData, world) {
       const step = 0.05
 
       // In the 3 loops bellow, y offset should be -1, but that doesnt reproduce vanilla behavior.
-      for (; dx !== 0 && getSurroundingBBs(world, getPlayerBB(pos).offset(dx, 0, 0)).length === 0; oldVelX = dx) {
+      for (; dx !== 0 && getSurroundingBBsWithDoorLogic(world, getPlayerBB(pos).offset(dx, 0, 0)).length === 0; oldVelX = dx) {
         if (dx < step && dx >= -step) dx = 0
         else if (dx > 0) dx -= step
         else dx += step
       }
 
-      for (; dz !== 0 && getSurroundingBBs(world, getPlayerBB(pos).offset(0, 0, dz)).length === 0; oldVelZ = dz) {
+      for (; dz !== 0 && getSurroundingBBsWithDoorLogic(world, getPlayerBB(pos).offset(0, 0, dz)).length === 0; oldVelZ = dz) {
         if (dz < step && dz >= -step) dz = 0
         else if (dz > 0) dz -= step
         else dz += step
       }
 
-      while (dx !== 0 && dz !== 0 && getSurroundingBBs(world, getPlayerBB(pos).offset(dx, 0, dz)).length === 0) {
+      while (dx !== 0 && dz !== 0 && getSurroundingBBsWithDoorLogic(world, getPlayerBB(pos).offset(dx, 0, dz)).length === 0) {
         if (dx < step && dx >= -step) dx = 0
         else if (dx > 0) dx -= step
-        else dx += step
+        else if (dx < 0) dx += step
+        else dx -= step
 
         if (dz < step && dz >= -step) dz = 0
         else if (dz > 0) dz -= step
@@ -204,7 +314,7 @@ function Physics (mcData, world) {
 
     let playerBB = getPlayerBB(pos)
     const queryBB = playerBB.clone().extend(dx, dy, dz)
-    const surroundingBBs = getSurroundingBBs(world, queryBB)
+    const surroundingBBs = getSurroundingBBsWithDoorLogic(world, queryBB)
     const oldBB = playerBB.clone()
 
     for (const blockBB of surroundingBBs) {
@@ -212,13 +322,59 @@ function Physics (mcData, world) {
     }
     playerBB.offset(0, dy, 0)
 
+    let slidingFrictionX = 1.0
+    let slidingFrictionZ = 1.0
+
+    // allow for block collision sliding on X axis
     for (const blockBB of surroundingBBs) {
+      const oldDx = dx
       dx = blockBB.computeOffsetX(playerBB, dx)
+      if (physics.config.enableCollisionSliding && oldDx !== dx) {
+        // Calculate sliding angle and apply friction to Z movement
+        const movementMagnitude = Math.sqrt(oldDx * oldDx + dz * dz)
+
+        if (movementMagnitude > 0) {
+          const cosAngle = Math.abs(oldDx) / movementMagnitude
+          const angleDegrees = Math.acos(Math.min(1, Math.max(-1, cosAngle))) * (180 / Math.PI)
+
+          // Apply sliding based on angle with exponential scaling:
+          // - 89° (nearly parallel): ~95% normal speed
+          // - 45° (diagonal): ~50% normal speed
+          // - 10° (shallow): ~5% normal speed
+          // - 0° (head-on): 0% speed (full stop)
+          const speedMultiplier = Math.pow(angleDegrees / 90, 2)
+
+          if (speedMultiplier > 0.05) {
+            slidingFrictionZ = Math.min(slidingFrictionZ, speedMultiplier)
+          } else {
+            slidingFrictionZ = 0
+          }
+        }
+      }
     }
     playerBB.offset(dx, 0, 0)
 
+    // allow for block collision sliding on Z axis
     for (const blockBB of surroundingBBs) {
+      const oldDz = dz
       dz = blockBB.computeOffsetZ(playerBB, dz)
+      if (physics.config.enableCollisionSliding && oldDz !== dz) {
+        // Calculate sliding angle and apply friction to X movement
+        const movementMagnitude = Math.sqrt(dx * dx + oldDz * oldDz)
+
+        if (movementMagnitude > 0) {
+          const cosAngle = Math.abs(oldDz) / movementMagnitude
+          const angleDegrees = Math.acos(Math.min(1, Math.max(-1, cosAngle))) * (180 / Math.PI)
+
+          const speedMultiplier = Math.pow(angleDegrees / 90, 2)
+
+          if (speedMultiplier > 0.05) {
+            slidingFrictionX = Math.min(slidingFrictionX, speedMultiplier)
+          } else {
+            slidingFrictionX = 0
+          }
+        }
+      }
     }
     playerBB.offset(0, 0, dz)
 
@@ -233,7 +389,7 @@ function Physics (mcData, world) {
 
       dy = physics.stepHeight
       const queryBB = oldBB.clone().extend(oldVelX, dy, oldVelZ)
-      const surroundingBBs = getSurroundingBBs(world, queryBB)
+      const surroundingBBs = getSurroundingBBsWithDoorLogic(world, queryBB)
 
       const BB1 = oldBB.clone()
       const BB2 = oldBB.clone()
@@ -303,7 +459,11 @@ function Physics (mcData, world) {
     const blockAtFeet = world.getBlock(pos.offset(0, -0.2, 0))
 
     if (dx !== oldVelX) vel.x = 0
+    else if (slidingFrictionX < 1.0) vel.x *= slidingFrictionX
+
     if (dz !== oldVelZ) vel.z = 0
+    else if (slidingFrictionZ < 1.0) vel.z *= slidingFrictionZ
+
     if (dy !== oldVelY) {
       if (blockAtFeet && blockAtFeet.type === slimeBlockId && !entity.control.sneak) {
         vel.y = -vel.y
@@ -460,7 +620,7 @@ function Physics (mcData, world) {
 
   function doesNotCollide (world, pos) {
     const pBB = getPlayerBB(pos)
-    return !getSurroundingBBs(world, pBB).some(x => pBB.intersects(x)) && getWaterInBB(world, pBB).length === 0
+    return !getSurroundingBBsWithDoorLogic(world, pBB).some(x => pBB.intersects(x)) && getWaterInBB(world, pBB).length === 0
   }
 
   function moveEntityWithHeading (entity, world, strafe, forward) {
