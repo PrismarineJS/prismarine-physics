@@ -13,11 +13,17 @@ describe('Scaffolding climbable and climbUsingJump feature', () => {
       expect(climbUsingJump.versions).toContain('1.21')
     })
 
-    it('climbUsingJump should include versions 1.14 through 1.21', () => {
+    it('climbUsingJump should include versions 1.14 through 26.1', () => {
       const climbUsingJump = features.find(f => f.name === 'climbUsingJump')
-      for (const v of ['1.14', '1.15', '1.16', '1.17', '1.18', '1.19', '1.20', '1.21']) {
+      for (const v of ['1.14', '1.15', '1.16', '1.17', '1.18', '1.19', '1.20', '1.21', '26.1']) {
         expect(climbUsingJump.versions).toContain(v)
       }
+    })
+
+    it('proportionalLiquidGravity should include version 26.1', () => {
+      const proportionalLiquidGravity = features.find(f => f.name === 'proportionalLiquidGravity')
+      expect(proportionalLiquidGravity).toBeTruthy()
+      expect(proportionalLiquidGravity.versions).toContain('26.1')
     })
   })
 
