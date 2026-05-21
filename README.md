@@ -68,7 +68,8 @@ const physics = Physics(mcData, world, {
 
 See `examples/` for more:
 - `basic.js` - Standalone physics simulation
-- `basic_door_example.js` - Opt-In Passabe block for Door blocks
+- `basic_prismarine_door.js` - Opt-in passable blocks for door blocks
+- `mineflayer_door.js` - Mineflayer integration with door passage enabled
 
 
 ## API
