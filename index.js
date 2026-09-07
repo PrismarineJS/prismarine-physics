@@ -543,6 +543,9 @@ function Physics (mcData, world) {
       let acceleration = 0.0
       let inertia = 0.0
       const blockUnder = world.getBlock(pos.offset(0, -1, 0))
+      // Player.travel wraps the move while flying and puts back the vertical velocity the tick
+      // started with, damped, so it is read before anything below touches it.
+      const flightEntryVelY = vel.y
       if (entity.onGround && blockUnder) {
         let playerSpeedAttribute
         if (entity.attributes && entity.attributes[physics.movementSpeedAttribute]) {
@@ -569,6 +572,11 @@ function Physics (mcData, world) {
         inertia = (blockSlipperiness[blockUnder.type] || physics.defaultSlipperiness) * 0.91
         acceleration = attributeSpeed * (0.1627714 / (inertia * inertia * inertia))
         if (acceleration < 0) acceleration = 0 // acceleration should not be negative
+      } else if (entity.flying) {
+        // Player.getFlyingSpeed: creative flight accelerates at the abilities' flying speed,
+        // doubled while sprinting, in place of the 0.02 / 0.026 of a falling player.
+        acceleration = entity.control.sprint ? entity.flyingSpeed * 2 : entity.flyingSpeed
+        inertia = physics.airborneInertia
       } else {
         acceleration = physics.airborneAcceleration
         inertia = physics.airborneInertia
@@ -581,7 +589,7 @@ function Physics (mcData, world) {
 
       applyHeading(entity, strafe, forward, acceleration)
 
-      if (isOnLadder(world, pos)) {
+      if (!entity.flying && isOnLadder(world, pos)) {
         vel.x = math.clamp(-physics.ladderMaxSpeed, vel.x, physics.ladderMaxSpeed)
         vel.z = math.clamp(-physics.ladderMaxSpeed, vel.z, physics.ladderMaxSpeed)
         vel.y = Math.max(vel.y, entity.control.sneak ? 0 : -physics.ladderMaxSpeed)
@@ -589,18 +597,22 @@ function Physics (mcData, world) {
 
       moveEntity(entity, world, vel.x, vel.y, vel.z)
 
-      if (isOnLadder(world, pos) && (entity.isCollidedHorizontally ||
+      if (!entity.flying && isOnLadder(world, pos) && (entity.isCollidedHorizontally ||
         (supportFeature('climbUsingJump') && entity.control.jump))) {
         vel.y = physics.ladderClimbSpeed // climb ladder
       }
 
       // Apply friction and gravity
-      if (entity.levitation > 0) {
-        vel.y += (0.05 * entity.levitation - vel.y) * 0.2
+      if (entity.flying) {
+        vel.y = flightEntryVelY * 0.6
       } else {
-        vel.y -= physics.gravity * gravityMultiplier
+        if (entity.levitation > 0) {
+          vel.y += (0.05 * entity.levitation - vel.y) * 0.2
+        } else {
+          vel.y -= physics.gravity * gravityMultiplier
+        }
+        vel.y *= physics.airdrag
       }
-      vel.y *= physics.airdrag
       vel.x *= inertia
       vel.z *= inertia
     }
@@ -820,6 +832,9 @@ class PlayerState {
     this.fireworkRocketDuration = bot.fireworkRocketDuration
 
     // Input only (not modified)
+    // The server owns these: it grants flight in the abilities packet and the client obeys.
+    this.flying = bot.entity.flying ?? false
+    this.flyingSpeed = bot.entity.flyingSpeed ?? 0.05
     this.attributes = bot.entity.attributes
     this.yaw = bot.entity.yaw
     this.pitch = bot.entity.pitch
