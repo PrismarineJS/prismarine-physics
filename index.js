@@ -469,7 +469,9 @@ function Physics (mcData, world) {
 
     const gravityMultiplier = (vel.y <= 0 && entity.slowFalling > 0) ? physics.slowFalling : 1
 
-    if (entity.isInWater || entity.isInLava) {
+    // Player.isAffectedByFluids is false while flying, so a flying player in water or lava takes
+    // the flight movement below rather than the fluid one.
+    if (!entity.flying && (entity.isInWater || entity.isInLava)) {
       // Water / Lava movement
       const lastY = pos.y
       let acceleration = physics.liquidAcceleration
@@ -696,10 +698,11 @@ function Physics (mcData, world) {
     return waterBlocks
   }
 
-  function isInWaterApplyCurrent (world, bb, vel) {
+  function isInWaterApplyCurrent (world, bb, vel, pushed) {
     const acceleration = new Vec3(0, 0, 0)
     const waterBlocks = getWaterInBB(world, bb)
     const isInWater = waterBlocks.length > 0
+    if (!pushed) return isInWater
     for (const block of waterBlocks) {
       const flow = getFlow(world, block)
       acceleration.add(flow)
@@ -721,8 +724,16 @@ function Physics (mcData, world) {
     const waterBB = getPlayerBB(pos).contract(0.001, 0.401, 0.001)
     const lavaBB = getPlayerBB(pos).contract(0.1, 0.4, 0.1)
 
-    entity.isInWater = isInWaterApplyCurrent(world, waterBB, vel)
+    // Player.isPushedByFluid is false while flying, so currents leave a flying player alone.
+    entity.isInWater = isInWaterApplyCurrent(world, waterBB, vel, !entity.flying)
     entity.isInLava = isMaterialInBB(world, lavaBB, lavaIds)
+
+    if (entity.flying) {
+      // LocalPlayer.aiStep: jump and sneak climb and descend at three times the flying speed,
+      // added before the move so Player.travel damps it with the rest of the vertical velocity.
+      const vertical = (entity.control.jump ? 1 : 0) - (entity.control.sneak ? 1 : 0)
+      vel.y += vertical * Math.fround(entity.flyingSpeed * 3)
+    }
 
     // Reset velocity component if it falls under the threshold
     if (Math.abs(vel.x) < physics.negligeableVelocity) vel.x = 0
@@ -730,7 +741,9 @@ function Physics (mcData, world) {
     if (Math.abs(vel.z) < physics.negligeableVelocity) vel.z = 0
 
     // Handle inputs
-    if (entity.control.jump || entity.jumpQueued) {
+    // A flying player does not jump: LivingEntity.aiStep gates it on isAffectedByFluids, and
+    // the jump key already climbs above.
+    if (!entity.flying && (entity.control.jump || entity.jumpQueued)) {
       if (entity.jumpTicks > 0) entity.jumpTicks--
       if (entity.isInWater || entity.isInLava) {
         vel.y += 0.04
