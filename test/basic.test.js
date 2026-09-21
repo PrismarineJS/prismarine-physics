@@ -63,4 +63,55 @@ describe('Basic tests', () => {
 
     expect(player.entity.position).toEqual(new Vec3(0, 60, 0))
   })
+
+  const mcData26 = require('minecraft-data')('26.1')
+  const Block26 = require('prismarine-block')('26.1')
+  // a flat stone floor (top at y=60) with `blockAt` deciding any other block, on 26.1 data
+  function world26 (blockAt) {
+    return {
+      getBlock: (pos) => {
+        const type = blockAt(pos) ?? (pos.y < 60 ? mcData26.blocksByName.stone.id : mcData26.blocksByName.air.id)
+        const b = new Block26(type, 0, 0)
+        b.position = pos
+        return b
+      }
+    }
+  }
+  function player26 (pos, controls) {
+    const player = fakePlayer(pos)
+    player.version = '26.1'
+    player.entity.onGround = true
+    player.entity.velocity.y = -0.0784 // steady value while standing: (0 - gravity) * drag
+    player.entity.yaw = -Math.PI / 2 // +x
+    return { player, state: new PlayerState(player, controls) }
+  }
+
+  it('applies the sneak slowdown one tick after the key on 1.14+', () => {
+    const world = world26(() => undefined)
+    const physics = Physics(mcData26, world)
+    const controls = { forward: true, back: false, left: false, right: false, jump: false, sprint: false, sneak: true }
+    const { player, state } = player26(new Vec3(0.5, 60, 0.5), controls)
+    const steps = []
+    for (let i = 0; i < 3; i++) {
+      const before = player.entity.position.x
+      physics.simulatePlayer(state, world).apply(player)
+      steps.push(player.entity.position.x - before)
+    }
+    // real client from rest with sneak + forward held: 0.0980 (unsneaked pose), then 0.0829, 0.0747
+    expect(steps[0]).toBeCloseTo(0.0980, 3)
+    expect(steps[1]).toBeCloseTo(0.0829, 3)
+    expect(steps[2]).toBeCloseTo(0.0747, 3)
+  })
+
+  it('keeps the immediate sneak slowdown before 1.14', () => {
+    const physics = Physics(mcData, fakeWorld)
+    const controls = { forward: true, back: false, left: false, right: false, jump: false, sprint: false, sneak: true }
+    const player = fakePlayer(new Vec3(0.5, 60, 0.5))
+    player.entity.onGround = true
+    player.entity.yaw = -Math.PI / 2
+    const state = new PlayerState(player, controls)
+    const before = player.entity.position.x
+    physics.simulatePlayer(state, fakeWorld).apply(player)
+    expect(player.entity.position.x - before).toBeCloseTo(0.0980 * 0.3, 3)
+  })
 })

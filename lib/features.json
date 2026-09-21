@@ -20,6 +20,11 @@
     "versions": ["1.15", "1.16", "1.17", "1.18", "1.19", "1.20"]
   },
   {
+    "name": "crouchPoseLag",
+    "description": "The sneak slowdown comes from the crouching pose, which is updated at the end of the tick, so it applies one tick after the key changes",
+    "versions": ["1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "26.1"]
+  },
+  {
     "name": "climbUsingJump",
     "description": "Entity can climb ladders and vines by pressing jump",
     "versions": ["1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "26.1"]

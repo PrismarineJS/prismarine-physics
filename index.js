@@ -436,6 +436,7 @@ function Physics (mcData, world) {
   }
 
   const climbableTrapdoorFeature = supportFeature('climbableTrapdoor')
+  const crouchPoseLag = supportFeature('crouchPoseLag')
   function isOnLadder (world, pos) {
     const block = world.getBlock(pos)
     if (!block) { return false }
@@ -768,7 +769,11 @@ function Physics (mcData, world) {
     let strafe = (entity.control.right - entity.control.left) * 0.98
     let forward = (entity.control.forward - entity.control.back) * 0.98
 
-    if (entity.control.sneak) {
+    // Since 1.14 the slowdown comes from the crouching pose, which the game updates at the end of
+    // the tick (Player.updatePlayerPose), so the first tick after pressing or releasing sneak still
+    // moves with the previous pose. Before 1.14 the key itself scaled the input at once.
+    const movingSlowly = crouchPoseLag ? entity.isCrouching : entity.control.sneak
+    if (movingSlowly) {
       strafe *= physics.sneakSpeed
       forward *= physics.sneakSpeed
     }
@@ -788,6 +793,10 @@ function Physics (mcData, world) {
     }
 
     moveEntityWithHeading(entity, world, strafe, forward)
+
+    // Player.updatePlayerPose at the end of the tick: crouching while the sneak key is held and
+    // the player is not flying with an elytra or swimming
+    entity.isCrouching = crouchPoseLag && entity.control.sneak && !entity.elytraFlying
 
     return entity
   }
@@ -837,6 +846,7 @@ class PlayerState {
     this.isInWater = bot.entity.isInWater
     this.isInLava = bot.entity.isInLava
     this.isInWeb = bot.entity.isInWeb
+    this.isCrouching = bot.entity.isCrouching ?? false
     this.isCollidedHorizontally = bot.entity.isCollidedHorizontally
     this.isCollidedVertically = bot.entity.isCollidedVertically
     this.elytraFlying = bot.entity.elytraFlying
@@ -886,6 +896,7 @@ class PlayerState {
     bot.entity.isInWater = this.isInWater
     bot.entity.isInLava = this.isInLava
     bot.entity.isInWeb = this.isInWeb
+    bot.entity.isCrouching = this.isCrouching
     bot.entity.isCollidedHorizontally = this.isCollidedHorizontally
     bot.entity.isCollidedVertically = this.isCollidedVertically
     bot.entity.elytraFlying = this.elytraFlying
