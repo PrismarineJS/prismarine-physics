@@ -30,6 +30,7 @@ function Physics (mcData, world) {
   const soulsandId = blocksByName.soul_sand.id
   const honeyblockId = blocksByName.honey_block ? blocksByName.honey_block.id : -1 // 1.15+
   const webId = blocksByName.cobweb ? blocksByName.cobweb.id : blocksByName.web.id
+  const powderSnowId = blocksByName.powder_snow ? blocksByName.powder_snow.id : -1 // 1.17+
   const waterIds = [blocksByName.water.id, blocksByName.flowing_water ? blocksByName.flowing_water.id : -1]
   const lavaIds = [blocksByName.lava.id, blocksByName.flowing_lava ? blocksByName.flowing_lava.id : -1]
   const ladderId = blocksByName.ladder.id
@@ -71,6 +72,8 @@ function Physics (mcData, world) {
     soulsandSpeed: 0.4,
     honeyblockSpeed: 0.4,
     honeyblockJumpSpeed: 0.4,
+    webStuckMultiplier: new Vec3(0.25, Math.fround(0.05), 0.25), // WebBlock.entityInside
+    powderSnowStuckMultiplier: new Vec3(Math.fround(0.9), 1.5, Math.fround(0.9)), // PowderSnowBlock.entityInside
     ladderMaxSpeed: 0.15,
     ladderClimbSpeed: 0.2,
     playerHalfWidth: 0.3,
@@ -158,14 +161,18 @@ function Physics (mcData, world) {
     const vel = entity.vel
     const pos = entity.pos
 
-    if (entity.isInWeb) {
-      dx *= 0.25
-      dy *= 0.05
-      dz *= 0.25
+    // Entity.makeStuckInBlock: a block the player is inside scales this move and drops the
+    // velocity. Cobwebs use (0.25, 0.05, 0.25), powder snow (0.9, 1.5, 0.9).
+    if (entity.isInWeb || entity.stuckMultiplier) {
+      const stuck = entity.stuckMultiplier ?? physics.webStuckMultiplier
+      dx *= stuck.x
+      dy *= stuck.y
+      dz *= stuck.z
       vel.x = 0
       vel.y = 0
       vel.z = 0
       entity.isInWeb = false
+      entity.stuckMultiplier = null
     }
 
     let oldVelX = dx
@@ -331,6 +338,10 @@ function Physics (mcData, world) {
             }
             if (block.type === webId) {
               entity.isInWeb = true
+              entity.stuckMultiplier = physics.webStuckMultiplier
+            } else if (block.type === powderSnowId && cursor.equals(pos.floored())) {
+              // PowderSnowBlock.entityInside only holds a living entity whose feet are in the block
+              entity.stuckMultiplier = physics.powderSnowStuckMultiplier
             } else if (block.type === bubblecolumnId) {
               const down = !block.metadata
               const aboveBlock = world.getBlock(cursor.offset(0, 1, 0))
@@ -837,6 +848,7 @@ class PlayerState {
     this.isInWater = bot.entity.isInWater
     this.isInLava = bot.entity.isInLava
     this.isInWeb = bot.entity.isInWeb
+    this.stuckMultiplier = bot.entity.stuckMultiplier ?? null
     this.isCollidedHorizontally = bot.entity.isCollidedHorizontally
     this.isCollidedVertically = bot.entity.isCollidedVertically
     this.elytraFlying = bot.entity.elytraFlying
@@ -886,6 +898,7 @@ class PlayerState {
     bot.entity.isInWater = this.isInWater
     bot.entity.isInLava = this.isInLava
     bot.entity.isInWeb = this.isInWeb
+    bot.entity.stuckMultiplier = this.stuckMultiplier
     bot.entity.isCollidedHorizontally = this.isCollidedHorizontally
     bot.entity.isCollidedVertically = this.isCollidedVertically
     bot.entity.elytraFlying = this.elytraFlying
