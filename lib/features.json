@@ -16,8 +16,8 @@
   },
   {
     "name": "velocityBlocksOnTop",
-    "description": "Velocity changes are caused by the block the player is standing on",
-    "versions": ["1.15", "1.16", "1.17", "1.18", "1.19", "1.20"]
+    "description": "Velocity changes are caused by the block the player is standing on (Block.getSpeedFactor and SlimeBlock.stepOn)",
+    "versions": ["1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "26.1"]
   },
   {
     "name": "climbUsingJump",

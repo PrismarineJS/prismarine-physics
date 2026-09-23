@@ -12,6 +12,11 @@ function Physics (mcData, world) {
   const supportFeature = makeSupportFeature(mcData)
   const blocksByName = mcData.blocksByName
 
+  // Minecraft 1.21.2 moved the block step-on callback (SlimeBlock.stepOn, via applyEffectsFromBlocks) to run AFTER
+  // LivingEntity.travel applies gravity and drag, instead of inside Entity.move before travel. The slime multiplier reads
+  // vel.y, so the timing changes the result: keep the pre-travel call for older versions and a post-travel one from 1.21.2.
+  const slimeStepOnAfterTravel = mcData.version['>=']('1.21.2')
+
   // Block Slipperiness
   // https://www.mcpk.wiki/w/index.php?title=Slipperiness
   const blockSlipperiness = {}
@@ -299,6 +304,7 @@ function Physics (mcData, world) {
     entity.isCollidedHorizontally = dx !== oldVelX || dz !== oldVelZ
     entity.isCollidedVertically = dy !== oldVelY
     entity.onGround = entity.isCollidedVertically && oldVelY < 0
+    entity.supportingBlockPos = entity.onGround ? findSupportingBlock(world, playerBB, pos, dx, dz) : null
 
     const blockAtFeet = world.getBlock(pos.offset(0, -0.2, 0))
 
@@ -311,6 +317,12 @@ function Physics (mcData, world) {
         vel.y = 0
       }
     }
+
+    // Before 1.21.2 the game runs SlimeBlock.stepOn here inside Entity.move - after the landing/bounce sets vel.y but
+    // before LivingEntity.travel applies gravity and drag, so the multiplier reads the bounced vel.y. From 1.21.2 the
+    // callback moved to after travel (slimeStepOnAfterTravel), so for those versions it is applied at the end of the land
+    // branch instead of here.
+    if (!slimeStepOnAfterTravel) applyStepOn(entity, world)
 
     // Finally, apply block collisions (web, soulsand...)
     playerBB.contract(0.001, 0.001, 0.001)
@@ -346,16 +358,79 @@ function Physics (mcData, world) {
       }
     }
     if (supportFeature('velocityBlocksOnTop')) {
-      const blockBelow = world.getBlock(entity.pos.floored().offset(0, -0.5, 0))
-      if (blockBelow) {
-        if (blockBelow.type === soulsandId) {
-          vel.x *= physics.soulsandSpeed
-          vel.z *= physics.soulsandSpeed
-        } else if (blockBelow.type === honeyblockId) {
-          vel.x *= physics.honeyblockSpeed
-          vel.z *= physics.honeyblockSpeed
+      // Entity.getBlockSpeedFactor, applied at the end of every move: the block at the feet, or,
+      // when that one has no factor and is not water or a bubble column, the block the player
+      // stands on (soul sand, honey)
+      const speedFactor = blockSpeedFactor(world, entity)
+      vel.x *= speedFactor
+      vel.z *= speedFactor
+    }
+  }
+
+  // Entity.checkSupportingBlock: among the blocks touching the underside of the box, the one
+  // closest to the player; it is what the game treats as the block the player stands on. When
+  // nothing is under the box after the move (the player just walked off an edge but the y
+  // collision still held it), the game looks under where the box was before the horizontal move.
+  function findSupportingBlock (world, playerBB, pos, dx, dz) {
+    const underside = new AABB(playerBB.minX, playerBB.minY - 1e-6, playerBB.minZ, playerBB.maxX, playerBB.minY, playerBB.maxZ)
+    return findSupportingBlockIn(world, underside, pos) ?? findSupportingBlockIn(world, underside.offset(-dx, 0, -dz), pos)
+  }
+
+  function findSupportingBlockIn (world, underside, pos) {
+    let best = null
+    let bestDist = Infinity
+    const cursor = new Vec3(0, 0, 0)
+    for (cursor.y = Math.floor(underside.minY); cursor.y <= Math.floor(underside.maxY); cursor.y++) {
+      for (cursor.z = Math.floor(underside.minZ); cursor.z <= Math.floor(underside.maxZ); cursor.z++) {
+        for (cursor.x = Math.floor(underside.minX); cursor.x <= Math.floor(underside.maxX); cursor.x++) {
+          const block = world.getBlock(cursor)
+          if (!block || !block.shapes) continue
+          for (const shape of block.shapes) {
+            const blockBB = new AABB(shape[0], shape[1], shape[2], shape[3], shape[4], shape[5]).offset(cursor.x, cursor.y, cursor.z)
+            if (!blockBB.intersects(underside)) continue
+            const dist = (cursor.x + 0.5 - pos.x) ** 2 + (cursor.y + 0.5 - pos.y) ** 2 + (cursor.z + 0.5 - pos.z) ** 2
+            if (dist < bestDist) {
+              bestDist = dist
+              best = cursor.clone()
+            }
+            break
+          }
         }
       }
+    }
+    return best
+  }
+
+  // Entity.getOnPos(offset): the supporting block when known, else the block `offset` below the feet
+  function getOnPos (entity, offset) {
+    return entity.supportingBlockPos ?? entity.pos.offset(0, -offset, 0).floored()
+  }
+
+  function blockSpeedFactorOf (block) {
+    if (!block) return 1
+    if (block.type === soulsandId) return physics.soulsandSpeed
+    if (block.type === honeyblockId) return physics.honeyblockSpeed
+    return 1
+  }
+
+  function blockSpeedFactor (world, entity) {
+    const here = world.getBlock(entity.pos.floored())
+    const factor = blockSpeedFactorOf(here)
+    if (here && (waterIds.includes(here.type) || here.type === bubblecolumnId)) return factor
+    if (factor !== 1) return factor
+    return blockSpeedFactorOf(world.getBlock(getOnPos(entity, 0.500001)))
+  }
+
+  // SlimeBlock.stepOn: standing on slime scales the horizontal velocity by 0.4 + |vy| * 0.2 while |vy| < 0.1, unless
+  // sneaking. It reads whatever vel.y is at the point it runs - the bounced value before travel (pre-1.21.2) or the
+  // post-gravity value after travel (1.21.2+); the callers gate that on slimeStepOnAfterTravel.
+  function applyStepOn (entity, world) {
+    if (!supportFeature('velocityBlocksOnTop') || !entity.onGround || entity.control.sneak) return
+    const onBlock = world.getBlock(getOnPos(entity, 0.2))
+    if (onBlock && onBlock.type === slimeBlockId && Math.abs(entity.vel.y) < 0.1) {
+      const scale = 0.4 + Math.abs(entity.vel.y) * 0.2
+      entity.vel.x *= scale
+      entity.vel.z *= scale
     }
   }
 
@@ -617,6 +692,9 @@ function Physics (mcData, world) {
       }
       vel.x *= inertia
       vel.z *= inertia
+      // 1.21.2+: the block step-on runs after travel's gravity/drag (applyEffectsFromBlocks after LivingEntity.travel), so
+      // it reads the post-travel vel.y and the drag-reduced horizontal velocity.
+      if (slimeStepOnAfterTravel) applyStepOn(entity, world)
     }
   }
 
