@@ -827,7 +827,10 @@ function getEnchantmentLevel (mcData, enchantmentName, enchantments) {
 
 class PlayerState {
   constructor (bot, control) {
-    const mcData = require('minecraft-data')(bot.version)
+    // Prefer the bot's already-resolved registry: it is correct for every edition, whereas re-resolving by bot.version
+    // is redundant on Java and picks the wrong edition on Bedrock (its version is a bare id). Fall back to minecraft-data
+    // for bare, non-mineflayer callers that construct a PlayerState without a registry.
+    const mcData = bot.registry ?? require('minecraft-data')(bot.version)
     const nbt = require('prismarine-nbt')
 
     // Input / Outputs
