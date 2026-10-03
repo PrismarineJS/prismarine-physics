@@ -20,6 +20,16 @@
     "versions": ["1.15", "1.16", "1.17", "1.18", "1.19", "1.20"]
   },
   {
+    "name": "fluidHeightFromFeet",
+    "description": "A fluid counts as soon as its surface is above the bottom of the entity box (Entity.updateFluidHeightAndDoFluidPushing), instead of the 1.8 ceil(maxY) test on a box shrunk by 0.4",
+    "versions": ["1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "26.1"]
+  },
+  {
+    "name": "shallowLavaMovement",
+    "description": "LivingEntity.travel splits lava into a shallow regime (height <= fluid jump threshold) with a distinct vertical rule; before 1.16 the whole lava velocity is scaled by lavaInertia and gravity/4 subtracted, with no split",
+    "versions": ["1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "26.1"]
+  },
+  {
     "name": "climbUsingJump",
     "description": "Entity can climb ladders and vines by pressing jump",
     "versions": ["1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "26.1"]
