@@ -73,8 +73,12 @@ function Physics (mcData, world) {
     honeyblockJumpSpeed: 0.4,
     ladderMaxSpeed: 0.15,
     ladderClimbSpeed: 0.2,
-    playerHalfWidth: 0.3,
-    playerHeight: 1.8,
+    // The player box is 0.6f x 1.8f in the game, single precision. The server rebuilds the box from
+    // its own float dimensions when it validates a move, so a double 0.3 half width overshoots a
+    // block face by 1.2e-8 (4.7 vs 4.699999988 against a face at 5) and every wall contact and
+    // ledge jump gets rejected as clipping into the block. Keep the float32 values.
+    playerHalfWidth: Math.fround(0.3),
+    playerHeight: Math.fround(1.8),
     waterInertia: 0.8,
     lavaInertia: 0.5,
     liquidAcceleration: 0.02,
