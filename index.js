@@ -239,7 +239,7 @@ function Physics (mcData, world) {
 
       const BB1 = oldBB.clone()
       const BB2 = oldBB.clone()
-      const BB_XZ = BB1.clone().extend(dx, 0, dz)
+      const BB_XZ = BB1.clone().extend(oldVelX, 0, oldVelZ)
 
       let dy1 = dy
       let dy2 = dy
