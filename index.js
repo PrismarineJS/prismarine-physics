@@ -65,6 +65,7 @@ function Physics (mcData, world) {
     pitchSpeed: 3.0,
     playerSpeed: 0.1,
     sprintSpeed: 0.3,
+    minorCollisionAngle: Math.fround(0.13962634), // LocalPlayer.MINOR_COLLISION_ANGLE_THRESHOLD_RADIAN (8 degrees)
     sneakSpeed: 0.3,
     stepHeight: 0.6, // how much height can the bot step on without jump
     negligeableVelocity: 0.003, // actually 0.005 for 1.8, but seems fine
@@ -298,6 +299,7 @@ function Physics (mcData, world) {
     // Update flags
     setPositionToBB(playerBB, pos)
     entity.isCollidedHorizontally = dx !== oldVelX || dz !== oldVelZ
+    entity.minorHorizontalCollision = entity.isCollidedHorizontally && isHorizontalCollisionMinor(entity, dx, dz)
     entity.isCollidedVertically = dy !== oldVelY
     entity.onGround = entity.isCollidedVertically && oldVelY < 0
 
@@ -418,6 +420,16 @@ function Physics (mcData, world) {
     }
   }
 
+  // The single input-to-world transform LocalPlayer uses: a (strafe, forward) impulse becomes a world direction under the
+  // entity's yaw. applyHeading and isHorizontalCollisionMinor MUST share it so their conventions cannot drift (the strafe
+  // sign in particular): x = -(strafe*cos + forward*sin), z = forward*cos - strafe*sin.
+  function inputToWorld (strafe, forward, yaw) {
+    const a = Math.PI - yaw
+    const sin = Math.sin(a)
+    const cos = Math.cos(a)
+    return { x: -(strafe * cos + forward * sin), z: forward * cos - strafe * sin }
+  }
+
   function applyHeading (entity, strafe, forward, multiplier) {
     let speed = Math.sqrt(strafe * strafe + forward * forward)
     if (speed < 0.01) return new Vec3(0, 0, 0)
@@ -427,16 +439,15 @@ function Physics (mcData, world) {
     strafe *= speed
     forward *= speed
 
-    const yaw = Math.PI - entity.yaw
-    const sin = Math.sin(yaw)
-    const cos = Math.cos(yaw)
-
+    const dir = inputToWorld(strafe, forward, entity.yaw)
     const vel = entity.vel
-    vel.x -= strafe * cos + forward * sin
-    vel.z += forward * cos - strafe * sin
+    vel.x += dir.x
+    vel.z += dir.z
   }
 
   const climbableTrapdoorFeature = supportFeature('climbableTrapdoor')
+  const sprintSurvivesMinorCollision = supportFeature('sprintSurvivesMinorCollision')
+  const sneakStopsSprinting = supportFeature('sneakStopsSprinting')
   function isOnLadder (world, pos) {
     const block = world.getBlock(pos)
     if (!block) { return false }
@@ -462,6 +473,40 @@ function Physics (mcData, world) {
   function doesNotCollide (world, pos) {
     const pBB = getPlayerBB(pos)
     return !getSurroundingBBs(world, pBB).some(x => pBB.intersects(x)) && getWaterInBB(world, pBB).length === 0
+  }
+
+  // LocalPlayer.isHorizontalCollisionMinor: a collision counts as minor when the move that survived it still
+  // points within 8 degrees of where the inputs wanted to go (brushing a wall), which keeps the sprint
+  function isHorizontalCollisionMinor (entity, dx, dz) {
+    // Use the same input-to-world transform as applyHeading so the desired direction matches where the move actually went
+    // (an earlier local copy flipped the strafe sign, so diagonal input was compared against the wrong direction).
+    const want = inputToWorld(entity.inputStrafe, entity.inputForward, entity.yaw)
+    const wantSq = want.x * want.x + want.z * want.z
+    const moveSq = dx * dx + dz * dz
+    if (wantSq < 1e-5 || moveSq < 1e-5) return false
+    const angle = Math.acos((want.x * dx + want.z * dz) / Math.sqrt(wantSq * moveSq))
+    return angle < physics.minorCollisionAngle
+  }
+
+  // LocalPlayer.aiStep: the sprint key only starts a sprint with forward input and while not sneaking; a
+  // sprint stops when the forward input ends, when sneaking (before 1.14: forward impulse below 0.8), or
+  // after the previous tick's move hit something horizontally (a minor brush against a wall no longer
+  // counts since 1.18). A held key starts the sprint again on the next tick that allows it. One
+  // deliberate difference: the client keeps sprinting after the key is released until the forward input
+  // ends, here releasing the key stops at once, which is what control.sprint has always meant.
+  function updateSprinting (entity) {
+    const hasForwardImpulse = entity.control.forward && !entity.control.back
+    if (!entity.control.sprint) {
+      entity.isSprinting = false
+      return
+    }
+    if (!entity.isSprinting && entity.control.sprint && hasForwardImpulse && !entity.control.sneak) {
+      entity.isSprinting = true
+    }
+    if (entity.isSprinting) {
+      const collided = entity.isCollidedHorizontally && !(sprintSurvivesMinorCollision && entity.minorHorizontalCollision)
+      if (!hasForwardImpulse || collided || (sneakStopsSprinting && entity.control.sneak)) entity.isSprinting = false
+    }
   }
 
   function moveEntityWithHeading (entity, world, strafe, forward) {
@@ -593,7 +638,7 @@ function Physics (mcData, world) {
         // Client-side sprinting (don't rely on server-side sprinting)
         // setSprinting in LivingEntity.java
         playerSpeedAttribute = attribute.deleteAttributeModifier(playerSpeedAttribute, physics.sprintingUUID) // always delete sprinting (if it exists)
-        if (entity.control.sprint) {
+        if (entity.isSprinting) {
           if (!attribute.checkAttributeModifier(playerSpeedAttribute, physics.sprintingUUID)) {
             playerSpeedAttribute = attribute.addAttributeModifier(playerSpeedAttribute, {
               uuid: physics.sprintingUUID,
@@ -616,7 +661,7 @@ function Physics (mcData, world) {
         acceleration = physics.airborneAcceleration
         inertia = physics.airborneInertia
 
-        if (entity.control.sprint) {
+        if (entity.isSprinting) {
           const airSprintFactor = physics.airborneAcceleration * 0.3
           acceleration += airSprintFactor
         }
@@ -804,6 +849,8 @@ function Physics (mcData, world) {
     if (Math.abs(vel.y) < physics.negligeableVelocity) vel.y = 0
     if (Math.abs(vel.z) < physics.negligeableVelocity) vel.z = 0
 
+    updateSprinting(entity)
+
     // Handle inputs
     // A flying player does not jump: LivingEntity.aiStep gates it on isAffectedByFluids, and
     // the jump key already climbs above.
@@ -817,7 +864,7 @@ function Physics (mcData, world) {
         if (entity.jumpBoost > 0) {
           vel.y += 0.1 * entity.jumpBoost
         }
-        if (entity.control.sprint) {
+        if (entity.isSprinting) {
           const yaw = Math.PI - entity.yaw
           vel.x -= Math.sin(yaw) * 0.2
           vel.z += Math.cos(yaw) * 0.2
@@ -836,6 +883,8 @@ function Physics (mcData, world) {
       strafe *= physics.sneakSpeed
       forward *= physics.sneakSpeed
     }
+    entity.inputStrafe = strafe
+    entity.inputForward = forward
 
     entity.elytraFlying = entity.elytraFlying && entity.elytraEquipped && !entity.onGround && !entity.levitation
 
@@ -906,7 +955,9 @@ class PlayerState {
     this.lavaHeight = bot.entity.lavaHeight ?? 0
     this.isInWeb = bot.entity.isInWeb
     this.isCollidedHorizontally = bot.entity.isCollidedHorizontally
+    this.minorHorizontalCollision = bot.entity.minorHorizontalCollision ?? false
     this.isCollidedVertically = bot.entity.isCollidedVertically
+    this.isSprinting = bot.entity.isSprinting ?? false
     this.elytraFlying = bot.entity.elytraFlying
     this.jumpTicks = bot.jumpTicks
     this.jumpQueued = bot.jumpQueued
@@ -956,7 +1007,9 @@ class PlayerState {
     bot.entity.lavaHeight = this.lavaHeight
     bot.entity.isInWeb = this.isInWeb
     bot.entity.isCollidedHorizontally = this.isCollidedHorizontally
+    bot.entity.minorHorizontalCollision = this.minorHorizontalCollision
     bot.entity.isCollidedVertically = this.isCollidedVertically
+    bot.entity.isSprinting = this.isSprinting
     bot.entity.elytraFlying = this.elytraFlying
     bot.jumpTicks = this.jumpTicks
     bot.jumpQueued = this.jumpQueued

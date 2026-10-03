@@ -38,5 +38,15 @@
     "name": "climbableTrapdoor",
     "description": "Trapdoors placed directly above ladders become climbable",
     "versions": ["1.9", "1.10", "1.11", "1.12", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20"]
+  },
+  {
+    "name": "sneakStopsSprinting",
+    "description": "Sneaking stops a running sprint (the forward impulse drops below 0.8); since 1.14 sneaking only prevents starting one",
+    "versions": ["1.8", "1.9", "1.10", "1.11", "1.12", "1.13"]
+  },
+  {
+    "name": "sprintSurvivesMinorCollision",
+    "description": "A horizontal collision within 8 degrees of the wanted direction (LocalPlayer.isHorizontalCollisionMinor) does not stop sprinting",
+    "versions": ["1.18", "1.19", "1.20", "1.21", "26.1"]
   }
 ]
