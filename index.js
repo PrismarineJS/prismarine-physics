@@ -205,8 +205,29 @@ function Physics (mcData, world) {
     }
 
     let playerBB = getPlayerBB(pos)
-    const queryBB = playerBB.clone().extend(dx, dy, dz)
-    const surroundingBBs = getSurroundingBBs(world, queryBB)
+    let queryBB = playerBB.clone().extend(dx, dy, dz)
+    let surroundingBBs = getSurroundingBBs(world, queryBB)
+    if (entity.onGround) {
+      let supportGrowth = 0
+      for (const blockBB of surroundingBBs) {
+        const overlap = blockBB.maxY - playerBB.minY
+        if (blockBB.minY < playerBB.minY && blockBB.intersects(playerBB) && overlap > 0 && overlap <= physics.stepHeight) {
+          supportGrowth = Math.max(supportGrowth, overlap)
+        }
+      }
+      if (supportGrowth > 0) {
+        const liftedBB = playerBB.clone().offset(0, supportGrowth, 0)
+        // Query the world for the LIFTED box's neighborhood before accepting: the original surroundingBBs were collected
+        // for the pre-lift query box, so a ceiling the lift newly reaches is not in that set and would be missed here.
+        const liftedQueryBB = liftedBB.clone().extend(dx, dy, dz)
+        const liftedSurroundingBBs = getSurroundingBBs(world, liftedQueryBB)
+        if (!liftedSurroundingBBs.some(blockBB => blockBB.intersects(liftedBB))) {
+          playerBB = liftedBB
+          queryBB = liftedQueryBB
+          surroundingBBs = liftedSurroundingBBs
+        }
+      }
+    }
     const oldBB = playerBB.clone()
 
     for (const blockBB of surroundingBBs) {
