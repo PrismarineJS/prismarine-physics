@@ -42,10 +42,11 @@ function corridor (ceilingOverPlayer) {
 
 /** Walk west, into the carpet, for `ticks` ticks. Yaw of PI/2 is -x. */
 function walkWest (world, ticks) {
+  const physics = Physics(mcData, world) // moved up to derive player x position from physics
   const player = {
     entity: {
-      // x=0.3 puts the player's west face on 0.0, flush with the carpet.
-      position: new Vec3(0.3, 61, 0.5),
+      // x is derived from physics, keeping the player flush with the carpet
+      position: new Vec3(physics.playerHalfWidth, 61, 0.5),
       velocity: new Vec3(0, 0, 0),
       onGround: true,
       isInWater: false,
@@ -73,7 +74,6 @@ function walkWest (world, ticks) {
     sprint: false,
     sneak: false
   }
-  const physics = Physics(mcData, world)
   const state = new PlayerState(player, controls)
   for (let tick = 0; tick < ticks; tick++) {
     physics.simulatePlayer(state, world).apply(player)
