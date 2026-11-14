@@ -74,7 +74,7 @@ function Physics (mcData, world) {
     honeyblockJumpSpeed: 0.4,
     ladderMaxSpeed: 0.15,
     ladderClimbSpeed: 0.2,
-    playerHalfWidth: Math.fround(0.6) / 2,
+    playerHalfWidth: Math.fround(0.6 / 2), // changed from 0.3 to fix bounding box error
     playerHeight: 1.8,
     waterInertia: 0.8,
     lavaInertia: 0.5,
