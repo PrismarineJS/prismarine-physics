@@ -764,6 +764,7 @@ function Physics (mcData, world) {
   // the box was shrunk by 0.4 at the top and compared through ceil(maxY).
   const fluidHeightFromFeet = supportFeature('fluidHeightFromFeet')
   const shallowLavaMovement = supportFeature('shallowLavaMovement')
+  const playerWaterCurrent = supportFeature('playerWaterCurrent')
 
   function isWaterBlock (block) {
     return block && (waterIds.includes(block.type) || waterLike.has(block.type) || block.isWaterlogged)
@@ -800,11 +801,112 @@ function Physics (mcData, world) {
     return { blocks, height }
   }
 
+  // The water of a block as FluidState.getOwnHeight has it: amount / 9, a falling or still
+  // block counting 8; 0 for a block without water.
+  function waterOwnHeight (block) {
+    if (!isWaterBlock(block)) return 0
+    if (waterLike.has(block.type) || block.isWaterlogged || !waterIds.includes(block.type)) return Math.fround(8 / 9)
+    const level = block.metadata
+    return Math.fround((level >= 8 ? 8 : 8 - level) / 9)
+  }
+
+  // The fluid in a block for FlowingFluid.affectsFlow: none or water lets the water flow by.
+  function affectsWaterFlow (block) {
+    return !block || isWaterBlock(block) || !lavaIds.includes(block.type)
+  }
+
+  function isSolidBlock (block) {
+    return !!block && block.boundingBox === 'block' && !isWaterBlock(block)
+  }
+
+  // Vec3.normalize: a vector shorter than 1e-5 (a float) comes back as zero.
+  function normalized (v) {
+    const len = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z)
+    return len < Math.fround(1e-5) ? new Vec3(0, 0, 0) : new Vec3(v.x / len, v.y / len, v.z / len)
+  }
+
+  // FlowingFluid.getFlow, for water: the way the water of a block runs, from the heights of the
+  // blocks beside it, and down along a wall when it falls.
+  function waterFlow (world, block) {
+    const own = waterOwnHeight(block)
+    let flowX = 0
+    let flowZ = 0
+    // Direction.Plane.HORIZONTAL: north, east, south, west
+    const sides = [[0, -1], [1, 0], [0, 1], [-1, 0]]
+    for (const [dx, dz] of sides) {
+      const side = world.getBlock(block.position.offset(dx, 0, dz))
+      if (!affectsWaterFlow(side)) continue
+      let height = waterOwnHeight(side)
+      let distance = 0
+      if (height === 0) {
+        if (!isSolidBlock(side)) {
+          const below = world.getBlock(block.position.offset(dx, -1, dz))
+          if (affectsWaterFlow(below)) {
+            height = waterOwnHeight(below)
+            if (height > 0) distance = Math.fround(own - Math.fround(height - Math.fround(8 / 9)))
+          }
+        }
+      } else if (height > 0) {
+        distance = Math.fround(own - height)
+      }
+      flowX += dx * distance
+      flowZ += dz * distance
+    }
+    let flow = new Vec3(flowX, 0, flowZ)
+    if (waterIds.includes(block.type) && block.metadata >= 8) {
+      for (const [dx, dz] of sides) {
+        const side = world.getBlock(block.position.offset(dx, 0, dz))
+        const above = world.getBlock(block.position.offset(dx, 1, dz))
+        if (isSolidBlock(side) || isSolidBlock(above)) {
+          flow = normalized(flow).translate(0, -6, 0)
+          break
+        }
+      }
+    }
+    return normalized(flow)
+  }
+
+  // EntityFluidInteraction.update and applyCurrentTo for a player: each water block the box is
+  // in adds its flow, scaled by the depth at the feet while that is under 0.4; the player gets
+  // the average of them times 0.014, and at least 0.0045 when it hardly moves.
+  function applyWaterCurrent (world, bb, vel) {
+    const entityY = bb.minY - 0.001
+    let height = 0
+    let count = 0
+    const sum = new Vec3(0, 0, 0)
+    const cursor = new Vec3(0, 0, 0)
+    for (cursor.x = Math.floor(bb.minX); cursor.x <= Math.ceil(bb.maxX) - 1; cursor.x++) {
+      for (cursor.y = Math.floor(bb.minY); cursor.y <= Math.ceil(bb.maxY) - 1; cursor.y++) {
+        for (cursor.z = Math.floor(bb.minZ); cursor.z <= Math.ceil(bb.maxZ) - 1; cursor.z++) {
+          const block = world.getBlock(cursor)
+          if (!isWaterBlock(block)) continue
+          const top = cursor.y + (isWaterBlock(world.getBlock(cursor.offset(0, 1, 0))) ? 1 : waterOwnHeight(block))
+          if (top < bb.minY) continue
+          height = Math.max(top - entityY, height)
+          let flow = waterFlow(world, block)
+          if (height < 0.4) flow = flow.scaled(height)
+          sum.add(flow)
+          count++
+        }
+      }
+    }
+    if (count === 0 || sum.x * sum.x + sum.y * sum.y + sum.z * sum.z < Math.fround(1e-5)) return
+    let impulse = sum.scaled(1 / count).scaled(0.014)
+    if (Math.abs(vel.x) < 0.003 && Math.abs(vel.z) < 0.003 && impulse.norm() < 0.0045000000000000005) {
+      impulse = normalized(impulse).scaled(0.0045000000000000005)
+    }
+    vel.add(impulse)
+  }
+
   function isInWaterApplyCurrent (world, bb, vel, pushed) {
     const acceleration = new Vec3(0, 0, 0)
     const waterBlocks = getWaterInBB(world, bb)
     const isInWater = waterBlocks.length > 0
     if (!pushed) return isInWater
+    if (playerWaterCurrent) {
+      if (isInWater) applyWaterCurrent(world, bb, vel)
+      return isInWater
+    }
     for (const block of waterBlocks) {
       const flow = getFlow(world, block)
       acceleration.add(flow)

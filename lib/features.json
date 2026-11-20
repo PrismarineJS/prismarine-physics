@@ -30,6 +30,11 @@
     "versions": ["1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "26.1", "26.2", "26.3"]
   },
   {
+    "name": "playerWaterCurrent",
+    "description": "EntityFluidInteraction: a player gets the average of the flows of the water blocks it is in, each scaled by the depth at its feet below 0.4, at least 0.0045 when it hardly moves; flows from FlowingFluid.getFlow. Checked against the 26.1.2, 26.2 and 26.3 clients",
+    "versions": ["26.1", "26.2", "26.3"]
+  },
+  {
     "name": "climbUsingJump",
     "description": "Entity can climb ladders and vines by pressing jump",
     "versions": ["1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "26.1", "26.2", "26.3"]
