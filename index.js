@@ -10,6 +10,8 @@ function makeSupportFeature (mcData) {
 
 function Physics (mcData, world) {
   const supportFeature = makeSupportFeature(mcData)
+  // The player rule of LivingEntity.aiStep came with 1.21.5, within a major version
+  const horizontalVelocityCutoff = typeof mcData.version?.['>='] === 'function' && mcData.version['>=']('1.21.5')
   const blocksByName = mcData.blocksByName
 
   // Block Slipperiness
@@ -845,9 +847,18 @@ function Physics (mcData, world) {
     }
 
     // Reset velocity component if it falls under the threshold
-    if (Math.abs(vel.x) < physics.negligeableVelocity) vel.x = 0
+    // LivingEntity.aiStep: since 1.21.5 a player's horizontal speed is dropped only as a whole,
+    // when it is under 0.003 (9e-6 squared); an axis on its own is kept
+    if (horizontalVelocityCutoff) {
+      if (vel.x * vel.x + vel.z * vel.z < 9.0E-6) {
+        vel.x = 0
+        vel.z = 0
+      }
+    } else {
+      if (Math.abs(vel.x) < physics.negligeableVelocity) vel.x = 0
+      if (Math.abs(vel.z) < physics.negligeableVelocity) vel.z = 0
+    }
     if (Math.abs(vel.y) < physics.negligeableVelocity) vel.y = 0
-    if (Math.abs(vel.z) < physics.negligeableVelocity) vel.z = 0
 
     updateSprinting(entity)
 
