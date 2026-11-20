@@ -107,6 +107,47 @@ describe('Basic tests', () => {
     expect(rows[dip + 1].vy).toBeCloseTo(before * 0.8 - 0.08 / 16, 6)
   })
 
+  // A strip of flowing water on the floor at y=60 for x from -3 to 3, its level rising by one a
+  // block towards +x (amount 9 - level falling), so it runs to +x; air above it.
+  function stripWorld (levelAt) {
+    const water = mcData26.blocksByName.water.id
+    return {
+      getBlock: (pos) => {
+        const level = pos.y === 60 && pos.z >= -2 && pos.z <= 2 ? levelAt(pos.x) : undefined
+        const b = level === undefined
+          ? new Block26(pos.y < 60 ? mcData26.blocksByName.stone.id : mcData26.blocksByName.air.id, 0, 0)
+          : new Block26(water, 0, level)
+        b.position = pos.clone()
+        return b
+      }
+    }
+  }
+  const still = { forward: false, back: false, left: false, right: false, jump: false, sprint: false, sneak: false }
+  function pushOnFirstTick (world) {
+    const physics = Physics(mcData26, world)
+    const player = fakePlayer(new Vec3(0.5, 60, 0.5))
+    player.version = '26.1'
+    player.entity.onGround = true
+    const state = new PlayerState(player, still)
+    state.vel.y = -0.005
+    physics.simulatePlayer(state, world)
+    return state.pos.x - 0.5
+  }
+
+  it('pushes a player in shallow running water by the depth at its feet, at least 0.0045 (26.1+)', () => {
+    // At x=0 level 7 (amount 1: 1/9 deep), level 6 to the west, level 7 to the east... the
+    // water runs east. 1/9 < 0.4, so the flow is scaled by 1/9 to a push of 0.014 / 9, and the
+    // player at rest gets the least push instead, 0.0045 (EntityFluidInteraction.applyTo).
+    const x = pushOnFirstTick(stripWorld((bx) => bx < 0 ? 6 : 7))
+    expect(x).toBeCloseTo(0.0045, 9)
+  })
+
+  it('pushes a player in deep running water by 0.014 (26.1+)', () => {
+    // Level 1 (amount 7: 7/9 deep, over 0.4) with level 0 to the west and level 2 to the east.
+    const x = pushOnFirstTick(stripWorld((bx) => bx < 0 ? 0 : bx === 0 ? 1 : 2))
+    expect(x).toBeCloseTo(0.014, 9)
+  })
+
   // Shallow lava (surface just above the feet) is the case that distinguishes the versions: 1.16+ has a dedicated shallow
   // regime in LivingEntity.travel, while 1.13-1.15 have no split and scale the whole lava velocity by lavaInertia then
   // subtract gravity/4. Same physical setup, feet at 60.5 over lava topping out ~60.79, initial upward velocity 0.1.
