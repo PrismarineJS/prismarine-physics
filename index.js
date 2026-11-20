@@ -470,9 +470,24 @@ function Physics (mcData, world) {
     return false
   }
 
+  // Entity.isFree: no block collides and the box holds no fluid at all (Level.containsAnyLiquid).
+  // Unlike the in-water test, the height of the fluid's surface does not matter here.
   function doesNotCollide (world, pos) {
     const pBB = getPlayerBB(pos)
-    return !getSurroundingBBs(world, pBB).some(x => pBB.intersects(x)) && getWaterInBB(world, pBB).length === 0
+    return !getSurroundingBBs(world, pBB).some(x => pBB.intersects(x)) && !containsAnyLiquid(world, pBB)
+  }
+
+  function containsAnyLiquid (world, bb) {
+    const cursor = new Vec3(0, 0, 0)
+    for (cursor.y = Math.floor(bb.minY); cursor.y <= Math.floor(bb.maxY); cursor.y++) {
+      for (cursor.z = Math.floor(bb.minZ); cursor.z <= Math.floor(bb.maxZ); cursor.z++) {
+        for (cursor.x = Math.floor(bb.minX); cursor.x <= Math.floor(bb.maxX); cursor.x++) {
+          const block = world.getBlock(cursor)
+          if (isWaterBlock(block) || (block && lavaIds.includes(block.type))) return true
+        }
+      }
+    }
+    return false
   }
 
   // LocalPlayer.isHorizontalCollisionMinor: a collision counts as minor when the move that survived it still

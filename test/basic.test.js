@@ -107,6 +107,29 @@ describe('Basic tests', () => {
     expect(rows[dip + 1].vy).toBeCloseTo(before * 0.8 - 0.08 / 16, 6)
   })
 
+  it('jumps out of water onto a bank only once the raised box holds no water (1.13+)', () => {
+    const water = mcData26.blocksByName.water.id
+    // a channel one block deep at y=60 for x < 1, a stone bank one block high from x=1, air above both
+    const world = world26((pos) => (pos.y === 60 && pos.x < 1) ? water : (pos.y === 60) ? mcData26.blocksByName.stone.id : undefined)
+    const physics = Physics(mcData26, world)
+    const { player, state } = player26(new Vec3(0.69, 60, 0.5), { ...walkControls, jump: true })
+    state.vel.y = -0.005 // steady value while standing in water: 0 * 0.8 - gravity / 16
+    const rows = []
+    for (let i = 0; i < 7; i++) {
+      physics.simulatePlayer(state, world).apply(player)
+      rows.push({ y: player.entity.position.y, vy: player.entity.velocity.y })
+    }
+    // LivingEntity.jumpOutOfFluid asks Entity.isFree, which refuses a box with any fluid block in it, whatever
+    // the height of its surface. On tick 5 the raised box still reaches into the water block (bottom at 60.976),
+    // so the player keeps swimming up; on tick 6 it clears it and gets the 0.3 boost.
+    const y = [60.035, 60.098, 60.1834, 60.28672, 60.40438, 60.5335, 60.8735]
+    const vy = [0.023, 0.0454, 0.06332, 0.07766, 0.08912, 0.3, 0.3]
+    for (let i = 0; i < y.length; i++) {
+      expect(rows[i].y).toBeCloseTo(y[i], 4)
+      expect(rows[i].vy).toBeCloseTo(vy[i], 4)
+    }
+  })
+
   // Shallow lava (surface just above the feet) is the case that distinguishes the versions: 1.16+ has a dedicated shallow
   // regime in LivingEntity.travel, while 1.13-1.15 have no split and scale the whole lava velocity by lavaInertia then
   // subtract gravity/4. Same physical setup, feet at 60.5 over lava topping out ~60.79, initial upward velocity 0.1.
