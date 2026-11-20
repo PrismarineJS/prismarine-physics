@@ -130,6 +130,34 @@ describe('Basic tests', () => {
     return { inLava: player.entity.isInLava, vy: player.entity.velocity.y }
   }
 
+  // One tick on a stone floor at y=60 with no keys, from a speed of 0.2 along x and 0.002 along z.
+  function driftZ (ver) {
+    const data = require('minecraft-data')(ver)
+    const VBlock = require('prismarine-block')(ver)
+    const world = {
+      getBlock: (pos) => {
+        const b = new VBlock(pos.y < 60 ? data.blocksByName.stone.id : data.blocksByName.air.id, 0, 0)
+        b.position = pos.clone()
+        return b
+      }
+    }
+    const physics = Physics(data, world)
+    const player = fakePlayer(new Vec3(0.5, 60, 0.5))
+    player.version = ver
+    player.entity.onGround = true
+    const state = new PlayerState(player, { forward: false, back: false, left: false, right: false, jump: false, sprint: false, sneak: false })
+    state.vel.set(0.2, -0.0784, 0.002)
+    physics.simulatePlayer(state, world)
+    return state.pos.z - 0.5
+  }
+
+  it('keeps a small speed along one axis while the player moves along the other (1.21.5+)', () => {
+    // LivingEntity.aiStep drops a player's horizontal speed only when all of it is under 0.003
+    expect(driftZ('26.1')).toBeCloseTo(0.002, 9)
+    // before 1.21.5 each axis under 0.003 is dropped on its own
+    expect(driftZ('1.21.4')).toBe(0)
+  })
+
   it('uses the pre-1.16 deep-only lava rule on 1.15.2 (no shallow split)', () => {
     const { inLava, vy } = lavaFloatVy('1.15.2')
     expect(inLava).toBe(true)
