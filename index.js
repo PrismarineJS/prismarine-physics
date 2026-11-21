@@ -30,6 +30,7 @@ function Physics (mcData, world) {
   const soulsandId = blocksByName.soul_sand.id
   const honeyblockId = blocksByName.honey_block ? blocksByName.honey_block.id : -1 // 1.15+
   const webId = blocksByName.cobweb ? blocksByName.cobweb.id : blocksByName.web.id
+  const sweetBerryBushId = blocksByName.sweet_berry_bush ? blocksByName.sweet_berry_bush.id : -1 // 1.14+
   const waterIds = [blocksByName.water.id, blocksByName.flowing_water ? blocksByName.flowing_water.id : -1]
   const lavaIds = [blocksByName.lava.id, blocksByName.flowing_lava ? blocksByName.flowing_lava.id : -1]
   const ladderId = blocksByName.ladder.id
@@ -72,6 +73,8 @@ function Physics (mcData, world) {
     soulsandSpeed: 0.4,
     honeyblockSpeed: 0.4,
     honeyblockJumpSpeed: 0.4,
+    webStuckMultiplier: new Vec3(0.25, 0.05, 0.25),
+    sweetBerryBushStuckMultiplier: new Vec3(Math.fround(0.8), 0.75, Math.fround(0.8)), // SweetBerryBushBlock.entityInside
     ladderMaxSpeed: 0.15,
     ladderClimbSpeed: 0.2,
     playerHalfWidth: 0.3,
@@ -160,14 +163,18 @@ function Physics (mcData, world) {
     const vel = entity.vel
     const pos = entity.pos
 
-    if (entity.isInWeb) {
-      dx *= 0.25
-      dy *= 0.05
-      dz *= 0.25
+    // Entity.makeStuckInBlock: a block the player is inside scales this move and drops the
+    // velocity. Cobwebs use (0.25, 0.05, 0.25), sweet berry bushes (0.8, 0.75, 0.8).
+    if (entity.isInWeb || entity.stuckMultiplier) {
+      const stuck = entity.stuckMultiplier ?? physics.webStuckMultiplier
+      dx *= stuck.x
+      dy *= stuck.y
+      dz *= stuck.z
       vel.x = 0
       vel.y = 0
       vel.z = 0
       entity.isInWeb = false
+      entity.stuckMultiplier = null
     }
 
     let oldVelX = dx
@@ -334,6 +341,9 @@ function Physics (mcData, world) {
             }
             if (block.type === webId) {
               entity.isInWeb = true
+              entity.stuckMultiplier = physics.webStuckMultiplier
+            } else if (block.type === sweetBerryBushId) {
+              entity.stuckMultiplier = physics.sweetBerryBushStuckMultiplier
             } else if (block.type === bubblecolumnId) {
               const down = !block.metadata
               const aboveBlock = world.getBlock(cursor.offset(0, 1, 0))
@@ -954,6 +964,7 @@ class PlayerState {
     this.isInLava = bot.entity.isInLava
     this.lavaHeight = bot.entity.lavaHeight ?? 0
     this.isInWeb = bot.entity.isInWeb
+    this.stuckMultiplier = bot.entity.stuckMultiplier ?? null
     this.isCollidedHorizontally = bot.entity.isCollidedHorizontally
     this.minorHorizontalCollision = bot.entity.minorHorizontalCollision ?? false
     this.isCollidedVertically = bot.entity.isCollidedVertically
@@ -1006,6 +1017,7 @@ class PlayerState {
     bot.entity.isInLava = this.isInLava
     bot.entity.lavaHeight = this.lavaHeight
     bot.entity.isInWeb = this.isInWeb
+    bot.entity.stuckMultiplier = this.stuckMultiplier
     bot.entity.isCollidedHorizontally = this.isCollidedHorizontally
     bot.entity.minorHorizontalCollision = this.minorHorizontalCollision
     bot.entity.isCollidedVertically = this.isCollidedVertically
