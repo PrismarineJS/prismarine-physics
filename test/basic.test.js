@@ -283,6 +283,21 @@ describe('Sprint state', () => {
     expect(player.entity.isSprinting).toBe(false)
   })
 
+  it('counts the server sprinting modifier once (1.21+ id)', () => {
+    // The server sends its own sprint modifier with the speed attribute; since 1.21 its id is minecraft:sprinting
+    for (const version of ['1.21.4', '26.1']) {
+      const { data, world } = makeWorld(version, () => false)
+      const physics = Physics(data, world)
+      const player = makePlayer(version, new Vec3(0.5, 60, 0.5))
+      player.entity.attributes = {
+        [data.attributesByName.movementSpeed.resource]: { value: 0.1, modifiers: [{ uuid: 'minecraft:sprinting', amount: 0.3, operation: 2 }] }
+      }
+      const moved = tick(physics, world, player, { forward: true, sprint: true })
+      expect(player.entity.isSprinting).toBe(true)
+      expect(moved.z).toBeCloseTo(0.1274, 4) // 0.13 * 0.98, not 0.169 * 0.98
+    }
+  })
+
   it('sneaking prevents a sprint from starting and, before 1.14, stops one', () => {
     for (const [version, stops] of [['26.1', false], ['1.8.8', true]]) {
       const { data, world } = makeWorld(version, () => false)
