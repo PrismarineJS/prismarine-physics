@@ -819,6 +819,24 @@ function Physics (mcData, world) {
     return isInWater
   }
 
+  // LivingEntity.aiStep: whether the jump key swims up (jumpInLiquid) rather than jumps. Since
+  // 1.13 a player on the ground in water no deeper than the fluid jump threshold at its feet
+  // jumps as off the ground; since 1.16 the same goes for lava, whose height is then the one
+  // compared, also for the water test.
+  function swimsUp (entity, world) {
+    if (!fluidHeightFromFeet) return entity.isInWater || entity.isInLava
+    const shallow = (height) => entity.onGround && height <= physics.fluidJumpThreshold
+    let height = 0
+    if (shallowLavaMovement && entity.isInLava) {
+      height = entity.lavaHeight
+    } else if (entity.isInWater) {
+      height = scanFluid(world, getPlayerBB(entity.pos).contract(0.001, 0.001, 0.001), isWaterBlock).height
+    }
+    if (entity.isInWater && height > 0 && !shallow(height)) return true
+    if (!entity.isInLava) return false
+    return !(shallowLavaMovement && shallow(entity.lavaHeight))
+  }
+
   physics.simulatePlayer = (entity, world) => {
     const vel = entity.vel
     const pos = entity.pos
@@ -856,7 +874,7 @@ function Physics (mcData, world) {
     // the jump key already climbs above.
     if (!entity.flying && (entity.control.jump || entity.jumpQueued)) {
       if (entity.jumpTicks > 0) entity.jumpTicks--
-      if (entity.isInWater || entity.isInLava) {
+      if (swimsUp(entity, world)) {
         vel.y += 0.04
       } else if (entity.onGround && entity.jumpTicks === 0) {
         const blockBelow = world.getBlock(entity.pos.floored().offset(0, -0.5, 0))
