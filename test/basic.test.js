@@ -162,6 +162,42 @@ describe('Basic tests', () => {
   })
 })
 
+describe('Bubble columns', () => {
+  // a player at rest in a rising column deep under water: one tick from a still start
+  function riseOneTick (ver) {
+    const data = require('minecraft-data')(ver)
+    const VBlock = require('prismarine-block')(ver)
+    const world = {
+      getBlock: (pos) => {
+        const column = pos.x === 0 && pos.z === 0 && pos.y > 50 && pos.y < 70
+        const type = pos.y <= 50 ? data.blocksByName.stone.id : column ? data.blocksByName.bubble_column.id : pos.y < 70 ? data.blocksByName.water.id : data.blocksByName.air.id
+        const b = new VBlock(type, 0, column ? 1 : 0) // metadata 1: drag=false, a rising column
+        b.position = pos
+        return b
+      }
+    }
+    const physics = Physics(data, world)
+    const player = fakePlayer(new Vec3(0.5, 60, 0.5))
+    player.version = ver
+    const state = new PlayerState(player, { forward: false, back: false, left: false, right: false, jump: false, sprint: false, sneak: false })
+    physics.simulatePlayer(state, world).apply(player)
+    return player.entity.velocity.y
+  }
+
+  it('pushes inside the move before 1.21.2', () => {
+    // two column blocks push 0.06 each inside the move, then water drag and gravity: 0.12 * 0.8 - 0.005
+    expect(riseOneTick('1.13.2')).toBeCloseTo(0.091, 6)
+    expect(riseOneTick('1.21.1')).toBeCloseTo(0.091, 6)
+  })
+
+  it('pushes after travel on 1.21.2 and later', () => {
+    // water drag and gravity first (0 * 0.8 - 0.005), then the two pushes of 0.06
+    expect(riseOneTick('1.21.4')).toBeCloseTo(0.115, 6)
+    expect(riseOneTick('1.21.11')).toBeCloseTo(0.115, 6)
+    expect(riseOneTick('26.1')).toBeCloseTo(0.115, 6)
+  })
+})
+
 describe('Sprint state', () => {
   // LocalPlayer.aiStep decides whether the player is sprinting from the sprint key, the forward input, sneaking
   // and the previous tick's horizontal collision; the engine mirrors it in entity.isSprinting

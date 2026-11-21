@@ -10,6 +10,8 @@ function makeSupportFeature (mcData) {
 
 function Physics (mcData, world) {
   const supportFeature = makeSupportFeature(mcData)
+  // LivingEntity.aiStep moved the block effects after travel in 1.21.2, within a major version
+  const bubbleColumnAfterTravel = typeof mcData.version?.['>='] === 'function' && mcData.version['>=']('1.21.2')
   const blocksByName = mcData.blocksByName
 
   // Block Slipperiness
@@ -334,15 +336,8 @@ function Physics (mcData, world) {
             }
             if (block.type === webId) {
               entity.isInWeb = true
-            } else if (block.type === bubblecolumnId) {
-              const down = !block.metadata
-              const aboveBlock = world.getBlock(cursor.offset(0, 1, 0))
-              const bubbleDrag = (aboveBlock && aboveBlock.type === 0 /* air */) ? physics.bubbleColumnSurfaceDrag : physics.bubbleColumnDrag
-              if (down) {
-                vel.y = Math.max(bubbleDrag.maxDown, vel.y - bubbleDrag.down)
-              } else {
-                vel.y = Math.min(bubbleDrag.maxUp, vel.y + bubbleDrag.up)
-              }
+            } else if (block.type === bubblecolumnId && !bubbleColumnAfterTravel) {
+              bubbleColumnPush(world, block, cursor, vel)
             }
           }
         }
@@ -357,6 +352,34 @@ function Physics (mcData, world) {
         } else if (blockBelow.type === honeyblockId) {
           vel.x *= physics.honeyblockSpeed
           vel.z *= physics.honeyblockSpeed
+        }
+      }
+    }
+  }
+
+  // BubbleColumnBlock.entityInside: up or down, faster at the surface of the column
+  function bubbleColumnPush (world, block, cursor, vel) {
+    const down = !block.metadata
+    const aboveBlock = world.getBlock(cursor.offset(0, 1, 0))
+    const bubbleDrag = (aboveBlock && aboveBlock.type === 0 /* air */) ? physics.bubbleColumnSurfaceDrag : physics.bubbleColumnDrag
+    if (down) {
+      vel.y = Math.max(bubbleDrag.maxDown, vel.y - bubbleDrag.down)
+    } else {
+      vel.y = Math.min(bubbleDrag.maxUp, vel.y + bubbleDrag.up)
+    }
+  }
+
+  // Since 1.21.2 the blocks a player is in act after travel (LivingEntity.aiStep calls
+  // applyEffectsFromBlocks), on the box at the end of the move shrunk by 1e-5
+  function applyBubbleColumnsAfterTravel (entity, world) {
+    if (bubblecolumnId === -1) return
+    const bb = getPlayerBB(entity.pos).contract(1e-5, 1e-5, 1e-5)
+    const cursor = new Vec3(0, 0, 0)
+    for (cursor.y = Math.floor(bb.minY); cursor.y <= Math.floor(bb.maxY); cursor.y++) {
+      for (cursor.z = Math.floor(bb.minZ); cursor.z <= Math.floor(bb.maxZ); cursor.z++) {
+        for (cursor.x = Math.floor(bb.minX); cursor.x <= Math.floor(bb.maxX); cursor.x++) {
+          const block = world.getBlock(cursor)
+          if (block && block.type === bubblecolumnId) bubbleColumnPush(world, block, cursor, entity.vel)
         }
       }
     }
@@ -901,6 +924,7 @@ function Physics (mcData, world) {
     }
 
     moveEntityWithHeading(entity, world, strafe, forward)
+    if (bubbleColumnAfterTravel) applyBubbleColumnsAfterTravel(entity, world)
 
     return entity
   }
