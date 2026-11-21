@@ -509,6 +509,31 @@ function Physics (mcData, world) {
     }
   }
 
+  // The player's own speed (LivingEntity.getSpeed): the movement speed attribute, 0.1 if no modification
+  function getMovementSpeed (entity) {
+    let playerSpeedAttribute
+    if (entity.attributes && entity.attributes[physics.movementSpeedAttribute]) {
+      // Use server-side player attributes
+      playerSpeedAttribute = entity.attributes[physics.movementSpeedAttribute]
+    } else {
+      // Create an attribute if the player does not have it
+      playerSpeedAttribute = attribute.createAttributeValue(physics.playerSpeed)
+    }
+    // Client-side sprinting (don't rely on server-side sprinting)
+    // setSprinting in LivingEntity.java
+    playerSpeedAttribute = attribute.deleteAttributeModifier(playerSpeedAttribute, physics.sprintingUUID) // always delete sprinting (if it exists)
+    if (entity.isSprinting) {
+      if (!attribute.checkAttributeModifier(playerSpeedAttribute, physics.sprintingUUID)) {
+        playerSpeedAttribute = attribute.addAttributeModifier(playerSpeedAttribute, {
+          uuid: physics.sprintingUUID,
+          amount: physics.sprintSpeed,
+          operation: 2
+        })
+      }
+    }
+    return attribute.getAttributeValue(playerSpeedAttribute)
+  }
+
   function moveEntityWithHeading (entity, world, strafe, forward) {
     const vel = entity.vel
     const pos = entity.pos
@@ -531,7 +556,8 @@ function Physics (mcData, world) {
         }
         if (strider > 0) {
           horizontalInertia += (0.546 - horizontalInertia) * strider / 3
-          acceleration += (0.7 - acceleration) * strider / 3
+          // LivingEntity.travelInWater: the acceleration moves towards the player's own speed
+          acceleration += (getMovementSpeed(entity) - acceleration) * strider / 3
         }
 
         if (entity.dolphinsGrace > 0) horizontalInertia = 0.96
@@ -627,28 +653,7 @@ function Physics (mcData, world) {
       // started with, damped, so it is read before anything below touches it.
       const flightEntryVelY = vel.y
       if (entity.onGround && blockUnder) {
-        let playerSpeedAttribute
-        if (entity.attributes && entity.attributes[physics.movementSpeedAttribute]) {
-          // Use server-side player attributes
-          playerSpeedAttribute = entity.attributes[physics.movementSpeedAttribute]
-        } else {
-          // Create an attribute if the player does not have it
-          playerSpeedAttribute = attribute.createAttributeValue(physics.playerSpeed)
-        }
-        // Client-side sprinting (don't rely on server-side sprinting)
-        // setSprinting in LivingEntity.java
-        playerSpeedAttribute = attribute.deleteAttributeModifier(playerSpeedAttribute, physics.sprintingUUID) // always delete sprinting (if it exists)
-        if (entity.isSprinting) {
-          if (!attribute.checkAttributeModifier(playerSpeedAttribute, physics.sprintingUUID)) {
-            playerSpeedAttribute = attribute.addAttributeModifier(playerSpeedAttribute, {
-              uuid: physics.sprintingUUID,
-              amount: physics.sprintSpeed,
-              operation: 2
-            })
-          }
-        }
-        // Calculate what the speed is (0.1 if no modification)
-        const attributeSpeed = attribute.getAttributeValue(playerSpeedAttribute)
+        const attributeSpeed = getMovementSpeed(entity)
         inertia = (blockSlipperiness[blockUnder.type] || physics.defaultSlipperiness) * 0.91
         acceleration = attributeSpeed * (0.1627714 / (inertia * inertia * inertia))
         if (acceleration < 0) acceleration = 0 // acceleration should not be negative
