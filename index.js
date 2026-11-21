@@ -16,6 +16,11 @@ function Physics (mcData, world) {
   // LivingEntity.travel applies gravity and drag, instead of inside Entity.move before travel. The slime multiplier reads
   // vel.y, so the timing changes the result: keep the pre-travel call for older versions and a post-travel one from 1.21.2.
   const slimeStepOnAfterTravel = mcData.version['>=']('1.21.2')
+  // Since 1.20 the game keeps the block the player stands on (Entity.checkSupportingBlock) and reads the blocks
+  // under the player in its column (Entity.getOnPos)
+  const supportingBlocks = mcData.version['>=']('1.20')
+  const fenceIds = new Set(mcData.blocksArray.filter(b => /_fence$/.test(b.name)).map(b => b.id))
+  const wallOrGateIds = new Set(mcData.blocksArray.filter(b => /_wall$|_fence_gate$/.test(b.name)).map(b => b.id))
 
   // Block Slipperiness
   // https://www.mcpk.wiki/w/index.php?title=Slipperiness
@@ -75,7 +80,7 @@ function Physics (mcData, world) {
     negligeableVelocity: 0.003, // actually 0.005 for 1.8, but seems fine
     soulsandSpeed: 0.4,
     honeyblockSpeed: 0.4,
-    honeyblockJumpSpeed: 0.4,
+    honeyblockJumpSpeed: 0.5,
     ladderMaxSpeed: 0.15,
     ladderClimbSpeed: 0.2,
     playerHalfWidth: 0.3,
@@ -304,7 +309,7 @@ function Physics (mcData, world) {
     entity.isCollidedHorizontally = dx !== oldVelX || dz !== oldVelZ
     entity.isCollidedVertically = dy !== oldVelY
     entity.onGround = entity.isCollidedVertically && oldVelY < 0
-    entity.supportingBlockPos = entity.onGround ? findSupportingBlock(world, playerBB, pos, dx, dz) : null
+    entity.supportingBlockPos = supportingBlocks && entity.onGround ? findSupportingBlock(world, playerBB, pos, dx, dz) : null
 
     const blockAtFeet = world.getBlock(pos.offset(0, -0.2, 0))
 
@@ -401,9 +406,16 @@ function Physics (mcData, world) {
     return best
   }
 
-  // Entity.getOnPos(offset): the supporting block when known, else the block `offset` below the feet
-  function getOnPos (entity, offset) {
-    return entity.supportingBlockPos ?? entity.pos.offset(0, -offset, 0).floored()
+  // Entity.getOnPos(offset): the block `offset` below the feet, in the supporting block's column when there is one
+  // (a carpet's speed comes from the soul sand under it). Under a fence (offsets up to 0.5), a wall or a fence gate
+  // it is the supporting block itself.
+  function getOnPos (entity, world, offset) {
+    const support = entity.supportingBlockPos
+    if (!support) return entity.pos.offset(0, -offset, 0).floored()
+    if (offset <= 1e-5) return support
+    const block = world.getBlock(support)
+    if (block && ((offset <= 0.5 && fenceIds.has(block.type)) || wallOrGateIds.has(block.type))) return support
+    return new Vec3(support.x, Math.floor(entity.pos.y - offset), support.z)
   }
 
   function blockSpeedFactorOf (block) {
@@ -418,7 +430,14 @@ function Physics (mcData, world) {
     const factor = blockSpeedFactorOf(here)
     if (here && (waterIds.includes(here.type) || here.type === bubblecolumnId)) return factor
     if (factor !== 1) return factor
-    return blockSpeedFactorOf(world.getBlock(getOnPos(entity, 0.500001)))
+    return blockSpeedFactorOf(world.getBlock(getOnPos(entity, world, 0.500001)))
+  }
+
+  // Entity.getBlockJumpFactor: the block at the feet, else the block under them
+  function blockJumpFactor (world, entity) {
+    const jumpFactorOf = (block) => block && block.type === honeyblockId ? physics.honeyblockJumpSpeed : 1
+    const factor = jumpFactorOf(world.getBlock(entity.pos.floored()))
+    return factor !== 1 ? factor : jumpFactorOf(world.getBlock(getOnPos(entity, world, 0.500001)))
   }
 
   // SlimeBlock.stepOn: standing on slime scales the horizontal velocity by 0.4 + |vy| * 0.2 while |vy| < 0.1, unless
@@ -426,7 +445,7 @@ function Physics (mcData, world) {
   // post-gravity value after travel (1.21.2+); the callers gate that on slimeStepOnAfterTravel.
   function applyStepOn (entity, world) {
     if (!supportFeature('velocityBlocksOnTop') || !entity.onGround || entity.control.sneak) return
-    const onBlock = world.getBlock(getOnPos(entity, 0.2))
+    const onBlock = world.getBlock(getOnPos(entity, world, 0.2))
     if (onBlock && onBlock.type === slimeBlockId && Math.abs(entity.vel.y) < 0.1) {
       const scale = 0.4 + Math.abs(entity.vel.y) * 0.2
       entity.vel.x *= scale
@@ -801,8 +820,7 @@ function Physics (mcData, world) {
       if (entity.isInWater || entity.isInLava) {
         vel.y += 0.04
       } else if (entity.onGround && entity.jumpTicks === 0) {
-        const blockBelow = world.getBlock(entity.pos.floored().offset(0, -0.5, 0))
-        vel.y = Math.fround(0.42) * ((blockBelow && blockBelow.type === honeyblockId) ? physics.honeyblockJumpSpeed : 1)
+        vel.y = Math.fround(0.42) * blockJumpFactor(world, entity)
         if (entity.jumpBoost > 0) {
           vel.y += 0.1 * entity.jumpBoost
         }
@@ -890,6 +908,7 @@ class PlayerState {
     this.isInWater = bot.entity.isInWater
     this.isInLava = bot.entity.isInLava
     this.isInWeb = bot.entity.isInWeb
+    this.supportingBlockPos = bot.entity.supportingBlockPos ?? null
     this.isCollidedHorizontally = bot.entity.isCollidedHorizontally
     this.isCollidedVertically = bot.entity.isCollidedVertically
     this.elytraFlying = bot.entity.elytraFlying
@@ -936,6 +955,7 @@ class PlayerState {
     bot.entity.isInWater = this.isInWater
     bot.entity.isInLava = this.isInLava
     bot.entity.isInWeb = this.isInWeb
+    bot.entity.supportingBlockPos = this.supportingBlockPos
     bot.entity.isCollidedHorizontally = this.isCollidedHorizontally
     bot.entity.isCollidedVertically = this.isCollidedVertically
     bot.entity.elytraFlying = this.elytraFlying

@@ -111,6 +111,84 @@ describe('Basic tests', () => {
     expect(steps[39]).toBeCloseTo(0.1254, 3)
   })
 
+  const walkControls = { forward: true, back: false, left: false, right: false, jump: false, sprint: false, sneak: false }
+
+  // A floor of `under` at y=59 with `top` (a carpet, say) on it, on `version`; walks +x and returns the last step
+  function lastStepOn (version, under, top) {
+    const data = require('minecraft-data')(version)
+    const VBlock = require('prismarine-block')(version)
+    const world = {
+      getBlock: (pos) => {
+        const y = Math.floor(pos.y)
+        const name = y === 60 && top ? top : y === 59 ? under : y < 59 ? 'stone' : 'air'
+        const b = new VBlock(data.blocksByName[name].id, 0, 0)
+        b.position = pos
+        return b
+      }
+    }
+    const physics = Physics(data, world)
+    const player = fakePlayer(new Vec3(0.5, top ? 60.0625 : 60, 0.5))
+    player.version = version
+    player.entity.onGround = true
+    player.entity.velocity.y = -0.0784
+    player.entity.yaw = -Math.PI / 2
+    const state = new PlayerState(player, walkControls)
+    let step = 0
+    for (let i = 0; i < 40; i++) {
+      const before = player.entity.position.x
+      physics.simulatePlayer(state, world).apply(player)
+      step = player.entity.position.x - before
+    }
+    return step
+  }
+
+  for (const version of ['1.16.5', '1.20.4', '26.1']) {
+    it(`is slowed by soul sand under a carpet (${version})`, () => {
+      // Entity.getBlockSpeedFactor reads the block 0.500001 under the feet, in the supporting block's column from 1.20
+      const onSoulSand = lastStepOn(version, 'soul_sand')
+      expect(onSoulSand).toBeLessThan(0.15)
+      expect(lastStepOn(version, 'soul_sand', 'white_carpet')).toBeCloseTo(onSoulSand, 6)
+    })
+  }
+
+  it('walks at the client speed on a carpet over soul sand', () => {
+    // the 26.1.2 client walks 0.1254 a tick on a carpet over soul sand, as on soul sand itself
+    expect(lastStepOn('26.1', 'soul_sand', 'white_carpet')).toBeCloseTo(0.1254, 3)
+  })
+
+  // One jump from rest on `under` (with `top` on it), returns the vertical speed after the tick
+  function jumpFrom (version, under, top) {
+    const data = require('minecraft-data')(version)
+    const VBlock = require('prismarine-block')(version)
+    const world = {
+      getBlock: (pos) => {
+        const y = Math.floor(pos.y)
+        const name = y === 60 && top ? top : y === 59 ? under : y < 59 ? 'stone' : 'air'
+        const b = new VBlock(data.blocksByName[name].id, 0, 0)
+        b.position = pos
+        return b
+      }
+    }
+    const physics = Physics(data, world)
+    const surface = { honey_block: 59.9375, stone: 60 }[under]
+    const player = fakePlayer(new Vec3(0.5, top ? 60.0625 : surface, 0.5))
+    player.version = version
+    player.entity.onGround = true
+    const state = new PlayerState(player, { ...walkControls, forward: false, jump: true })
+    physics.simulatePlayer(state, world).apply(player)
+    return player.entity.velocity.y
+  }
+
+  for (const version of ['1.16.5', '1.20.4', '26.1']) {
+    it(`jumps half as high off honey (${version})`, () => {
+      // HoneyBlock's jump factor is 0.5: 0.42 * 0.5, then gravity and drag
+      const halfJump = (Math.fround(0.42) * 0.5 - 0.08) * 0.98
+      expect(jumpFrom(version, 'honey_block')).toBeCloseTo(halfJump, 6)
+      expect(jumpFrom(version, 'honey_block', 'white_carpet')).toBeCloseTo(halfJump, 6)
+      expect(jumpFrom(version, 'stone')).toBeCloseTo((Math.fround(0.42) - 0.08) * 0.98, 6)
+    })
+  }
+
   it('is slowed by SlimeBlock.stepOn on slime', () => {
     const { steps } = walkOn('slime_block', 40)
     // the game alternates a micro-bounce tick and a landing tick on slime; both are slower than stone
