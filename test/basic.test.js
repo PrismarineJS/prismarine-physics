@@ -297,3 +297,46 @@ describe('Sprint state', () => {
     }
   })
 })
+
+describe('Depth Strider', () => {
+  // LivingEntity.travelInWater moves the swim acceleration from 0.02 towards the player's own speed
+  // (the movement speed attribute, 0.1 walking and 0.13 sprinting), by level / 3 and half that off the ground
+  function swimTick (version, { sprint = false, attributes } = {}) {
+    const data = require('minecraft-data')(version)
+    const VBlock = require('prismarine-block')(version)
+    const world = {
+      getBlock: (pos) => {
+        const type = pos.y < 50 ? data.blocksByName.stone.id : pos.y < 70 ? data.blocksByName.water.id : data.blocksByName.air.id
+        const b = new VBlock(type, 0, 0)
+        b.position = pos
+        return b
+      }
+    }
+    const physics = Physics(data, world)
+    const player = fakePlayer(new Vec3(0.5, 60, 0.5))
+    player.version = version
+    player.entity.isInWater = true
+    player.entity.isSprinting = sprint
+    player.entity.yaw = Math.PI // face +z
+    player.entity.attributes = attributes
+    const state = new PlayerState(player, { forward: true, back: false, left: false, right: false, jump: false, sprint, sneak: false })
+    state.depthStrider = 3
+    physics.simulatePlayer(state, world).apply(player)
+    return player.entity.position.z - 0.5
+  }
+
+  it('swims towards the player speed with Depth Strider III', () => {
+    for (const version of ['1.8.8', '1.12.2', '1.16.5', '1.20.4', '1.21.4', '26.1']) {
+      // off the ground the level counts half: 0.02 + (0.1 - 0.02) * 1.5 / 3 = 0.06, times the 0.98 input
+      expect(swimTick(version)).toBeCloseTo(0.06 * 0.98, 6)
+      // sprinting: 0.02 + (0.13 - 0.02) * 0.5 = 0.075
+      expect(swimTick(version, { sprint: true })).toBeCloseTo(0.075 * 0.98, 6)
+    }
+  })
+
+  it('swims towards the movement speed attribute the server sent', () => {
+    // Speed II: 0.1 * 1.4 = 0.14, so 0.02 + (0.14 - 0.02) * 0.5 = 0.08
+    const attributes = { 'generic.movementSpeed': { value: 0.1, modifiers: [{ uuid: '5d6f0ba2-1186-46ac-b896-c61c5cee99cc', amount: 0.4, operation: 2 }] } }
+    expect(swimTick('1.8.8', { attributes })).toBeCloseTo(0.08 * 0.98, 6)
+  })
+})
